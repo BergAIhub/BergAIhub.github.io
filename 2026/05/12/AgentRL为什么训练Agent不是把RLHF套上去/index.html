@@ -1,0 +1,348 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>AgentRL为什么训练Agent不是把RLHF套上去 | YeeFayAI</title><meta name="author" content="YeeFayAI"><meta name="copyright" content="YeeFayAI"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#F2EDF7"><meta name="description" content="# AgentRL：为什么训练 Agent 不是把 RLHF 套上去  我这里说的 AgentRL，主要指 THUDM&#x2F;Z.AI 开源的 AgentRL 框架，以及它背后的论文《AgentRL: Scaling Agentic Reinforcement Learning with a Multi-Turn, Multi-Task Framework》。它要解决的问题不是“怎么让模型回">
+<meta property="og:type" content="article">
+<meta property="og:title" content="AgentRL为什么训练Agent不是把RLHF套上去">
+<meta property="og:url" content="https://yeefayai.github.io/2026/05/12/AgentRL%E4%B8%BA%E4%BB%80%E4%B9%88%E8%AE%AD%E7%BB%83Agent%E4%B8%8D%E6%98%AF%E6%8A%8ARLHF%E5%A5%97%E4%B8%8A%E5%8E%BB/index.html">
+<meta property="og:site_name" content="YeeFayAI">
+<meta property="og:description" content="# AgentRL：为什么训练 Agent 不是把 RLHF 套上去  我这里说的 AgentRL，主要指 THUDM&#x2F;Z.AI 开源的 AgentRL 框架，以及它背后的论文《AgentRL: Scaling Agentic Reinforcement Learning with a Multi-Turn, Multi-Task Framework》。它要解决的问题不是“怎么让模型回">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://yeefayai.github.io/img/YeeFay.jpg">
+<meta property="article:published_time" content="2026-05-11T20:03:51.000Z">
+<meta property="article:modified_time" content="2026-05-11T20:03:51.975Z">
+<meta property="article:author" content="YeeFayAI">
+<meta property="article:tag" content="Agent开发,人工智能,AI助手,大语言模型">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://yeefayai.github.io/img/YeeFay.jpg"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "AgentRL为什么训练Agent不是把RLHF套上去",
+  "url": "https://yeefayai.github.io/2026/05/12/AgentRL%E4%B8%BA%E4%BB%80%E4%B9%88%E8%AE%AD%E7%BB%83Agent%E4%B8%8D%E6%98%AF%E6%8A%8ARLHF%E5%A5%97%E4%B8%8A%E5%8E%BB/",
+  "image": "https://yeefayai.github.io/img/YeeFay.jpg",
+  "datePublished": "2026-05-11T20:03:51.000Z",
+  "dateModified": "2026-05-11T20:03:51.975Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "YeeFayAI",
+      "url": "https://yeefayai.github.io"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/YeeFay.jpg"><link rel="canonical" href="https://yeefayai.github.io/2026/05/12/AgentRL%E4%B8%BA%E4%BB%80%E4%B9%88%E8%AE%AD%E7%BB%83Agent%E4%B8%8D%E6%98%AF%E6%8A%8ARLHF%E5%A5%97%E4%B8%8A%E5%8E%BB/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.5.4"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#3d2b1f')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#F2EDF7')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: {"path":"/search.xml","preload":false,"top_n_per_article":1,"unescape":false,"pagination":{"enable":false,"hitsPerPage":8},"languages":{"hits_empty":"未找到符合您查询的内容：${query}","hits_stats":"共找到 ${hits} 篇文章"}},
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":false},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'null',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'AgentRL为什么训练Agent不是把RLHF套上去',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><style>
+/* UI style tweak */
+#nav .menus_item a {
+  font-size: 18px !important;
+}
+/* UI style tweak */
+#search-button .site-page {
+  font-size: 18px !important;
+}
+/* UI style tweak */
+.card-announcement .item-headline i {
+  color: #7B6B8A !important;
+}
+/* UI style tweak */
+.about-video-header {
+  position: relative;
+  width: 100%;
+  height: 60vh;
+  overflow: hidden;
+  margin-top: -60px;
+  margin-bottom: 20px;
+}
+.about-video-header video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.about-video-header .video-title {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: #fff;
+  font-size: 32px;
+  font-weight: 700;
+  text-shadow: 2px 2px 8px rgba(0,0,0,0.5);
+  z-index: 10;
+}
+.about-video-header::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.3);
+}
+</style>
+<meta name="generator" content="Hexo 8.1.1"></head><body><div class="bg-animation" id="web_bg" style="background-color: #F8F5FA;"></div><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="/img/YeeFay.jpg" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 主页</span></a></div><div class="menus_item"><a class="site-page" href="/categories/agent-notes/"><i class="fa-fw fas fa-robot"></i><span> Agent学习笔记</span></a></div><div class="menus_item"><a class="site-page" href="/categories/portfolio/"><i class="fa-fw fas fa-star"></i><span> 作品集</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-user"></i><span> 关于我</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg" id="page-header"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">YeeFayAI</span></a><a class="nav-page-title" href="/"><span class="site-name">AgentRL为什么训练Agent不是把RLHF套上去</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 主页</span></a></div><div class="menus_item"><a class="site-page" href="/categories/agent-notes/"><i class="fa-fw fas fa-robot"></i><span> Agent学习笔记</span></a></div><div class="menus_item"><a class="site-page" href="/categories/portfolio/"><i class="fa-fw fas fa-star"></i><span> 作品集</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-user"></i><span> 关于我</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">AgentRL为什么训练Agent不是把RLHF套上去</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-05-11T20:03:51.000Z" title="发表于 2026-05-12 04:03:51">2026-05-12</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-05-11T20:03:51.975Z" title="更新于 2026-05-12 04:03:51">2026-05-12</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/agent-notes/">Agent学习笔记</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><p>﻿# AgentRL：为什么训练 Agent 不是把 RLHF 套上去</p>
+<blockquote>
+<p>我这里说的 AgentRL，主要指 THUDM&#x2F;Z.AI 开源的 AgentRL 框架，以及它背后的论文《AgentRL: Scaling Agentic Reinforcement Learning with a Multi-Turn, Multi-Task Framework》。它要解决的问题不是“怎么让模型回答更好听”，而是怎么让模型在多轮环境里用工具、查资料、写代码、验证结果，并且真的因为做对事情而被强化。</p>
+</blockquote>
+<h2 id="这个问题为什么突然变重要"><a href="#这个问题为什么突然变重要" class="headerlink" title="这个问题为什么突然变重要"></a>这个问题为什么突然变重要</h2><p>过去我们谈大模型训练，经常围绕三件事：预训练、指令微调、RLHF。</p>
+<p>预训练让模型学会语言和世界知识。指令微调让模型更像一个会听话的助手。RLHF 让模型输出更符合人类偏好。</p>
+<p>但 Agent 出现以后，问题变了。</p>
+<p>一个 Agent 不只是回答一句话。它可能要先读文件，再调用工具，再根据错误日志改代码，再运行测试，最后决定要不要回滚。这个过程有多轮交互，有环境状态，有工具失败，有中间选择，也有很长的延迟反馈。</p>
+<p>这时候如果还只用“单轮问答”的训练方式，就会碰到一个很硬的限制：模型不是不会说答案，而是不知道怎么在环境里把事情做完。</p>
+<p>AgentRL 的价值就在这里。它不是又一个聊天模型对齐技巧，而是把 RL 训练搬到 Agent 的真实工作流里。</p>
+<h2 id="先把几个基础概念拆开"><a href="#先把几个基础概念拆开" class="headerlink" title="先把几个基础概念拆开"></a>先把几个基础概念拆开</h2><h3 id="1-RLHF-解决的是“回答像不像人喜欢”"><a href="#1-RLHF-解决的是“回答像不像人喜欢”" class="headerlink" title="1. RLHF 解决的是“回答像不像人喜欢”"></a>1. RLHF 解决的是“回答像不像人喜欢”</h3><p>RLHF 的经典目标是偏好对齐。</p>
+<p>人类标注者或者奖励模型会告诉系统：两个回答里哪个更好。模型学到的是一种偏好分布，比如更有帮助、更安全、更礼貌、更完整。</p>
+<p>这对聊天助手很重要，但它有一个隐含前提：任务通常在一次回答里结束。</p>
+<p>用户问一个问题，模型给一个答案，然后奖励系统评价这个答案。这条链路比较短，状态也不复杂。</p>
+<p>Agent 不是这样。</p>
+<p>Agent 的失败经常不是最后一句话写得不好，而是中间某一步走错了。比如它查错文件、误解测试失败、调用工具参数错、看到报错后没有更新计划。最后答案可能很自信，但任务已经在第 3 步坏掉了。</p>
+<p>所以训练 Agent，不能只盯着最终文本。要盯着行动过程。</p>
+<h3 id="2-RLVR-解决的是“结果能不能验证”"><a href="#2-RLVR-解决的是“结果能不能验证”" class="headerlink" title="2. RLVR 解决的是“结果能不能验证”"></a>2. RLVR 解决的是“结果能不能验证”</h3><p>RLVR 通常指 Reinforcement Learning with Verifiable Rewards，也就是用可验证结果当奖励。</p>
+<p>数学题算对了，代码测试过了，网页任务完成了，这些结果可以自动判断。它比纯偏好奖励更硬，因为奖励不是“我觉得这个回答更好”，而是“这个结果确实对”。</p>
+<p>这很适合推理和代码任务。</p>
+<p>但普通 RLVR 也有边界。很多训练还是围绕单任务、单环境、相对短的轨迹。比如给一道题，模型解出来，验证器给奖励。</p>
+<p>Agent 的轨迹更像这样：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">观察环境 -&gt; 选择动作 -&gt; 工具返回 -&gt; 更新状态 -&gt; 再选择动作 -&gt; 再观察 -&gt; 最后提交结果</span><br></pre></td></tr></table></figure>
+
+<p>奖励可能很晚才出现，而且中间每一步都可能影响后面。模型要学的不只是“答案是什么”，还包括“什么时候查资料、什么时候运行测试、什么时候停止、什么时候换方案”。</p>
+<h3 id="3-Agentic-RL-训练的是“做事过程”"><a href="#3-Agentic-RL-训练的是“做事过程”" class="headerlink" title="3. Agentic RL 训练的是“做事过程”"></a>3. Agentic RL 训练的是“做事过程”</h3><p>Agentic RL 可以粗略理解成：把 Agent 放进环境里，让它通过多轮行动拿到奖励。</p>
+<p>这里的关键词是环境。</p>
+<p>环境可以是代码仓库，可以是浏览器，可以是搜索系统，可以是数学验证器，也可以是一个需要多步操作的任务模拟器。模型不是一次性吐答案，而是在环境里做动作。</p>
+<p>这会带来三个新问题。</p>
+<p>第一，rollout 很慢。一次轨迹可能要调用很多工具，跑很多测试。训练吞吐会被环境拖慢。</p>
+<p>第二，任务差异很大。代码、数学、检索、网页、工具调用的动作空间和奖励形式都不一样。</p>
+<p>第三，奖励容易不稳定。环境失败、超时、工具抖动、验证器误判，都会让训练信号变脏。</p>
+<p>AgentRL 这类框架要解决的，正是这些工程问题。</p>
+<h3 id="4-多轮不是“多说几句”，而是状态在变"><a href="#4-多轮不是“多说几句”，而是状态在变" class="headerlink" title="4. 多轮不是“多说几句”，而是状态在变"></a>4. 多轮不是“多说几句”，而是状态在变</h3><p>很多人听到 multi-turn，会以为只是对话轮数多一点。</p>
+<p>对 Agent 来说，多轮的核心不是聊天更长，而是状态一直在变。</p>
+<p>模型第一次看到的是初始环境。它执行一个动作以后，环境返回新信息。这个新信息会改变下一步选择。比如：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">模型：运行测试</span><br><span class="line">环境：测试失败，报错在 auth/session.ts</span><br><span class="line">模型：打开 auth/session.ts</span><br><span class="line">环境：返回文件内容</span><br><span class="line">模型：发现 token 过期逻辑写错</span><br><span class="line">环境：等待下一步修改</span><br></pre></td></tr></table></figure>
+
+<p>这不是普通上下文拼接。每一步都在改变未来可见的信息和可选动作。</p>
+<p>所以 Agent 训练的关键，不是让模型背更多“最佳实践”，而是让它在状态变化里学会选择动作。</p>
+<h3 id="5-多任务不是“数据集混一下”"><a href="#5-多任务不是“数据集混一下”" class="headerlink" title="5. 多任务不是“数据集混一下”"></a>5. 多任务不是“数据集混一下”</h3><p>AgentRL 论文强调 multi-task，不是简单把多个数据集混起来。</p>
+<p>真正的问题是，不同任务的环境后端、动作格式、奖励函数、轨迹长度都不一样。如果每种任务都写一套训练逻辑，系统很快会碎掉。</p>
+<p>一个可扩展的 Agent RL 框架，必须把“模型训练”和“环境执行”拆开。</p>
+<p>训练侧关心策略更新、采样、优势估计、梯度。环境侧关心工具怎么调用、任务怎么验证、奖励怎么返回。</p>
+<p>这两个部分解耦以后，才有可能把代码任务、网页任务、检索任务、推理任务放进同一个训练框架里。</p>
+<h3 id="6-异步-rollout-是为了救吞吐"><a href="#6-异步-rollout-是为了救吞吐" class="headerlink" title="6. 异步 rollout 是为了救吞吐"></a>6. 异步 rollout 是为了救吞吐</h3><p>Agent 的环境交互很慢。</p>
+<p>如果训练进程每次都等所有环境跑完，再统一更新模型，就会被最慢的任务卡住。一个任务卡在浏览器，一个任务卡在测试，一个任务超时，整批训练都被拖慢。</p>
+<p>异步 rollout 的思路很直接：环境交互和模型更新不要死等彼此。</p>
+<p>可以把它想成一个生产线：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">worker A: 跑代码任务轨迹</span><br><span class="line">worker B: 跑检索任务轨迹</span><br><span class="line">worker C: 跑数学任务轨迹</span><br><span class="line">trainer: 持续消费已经完成的轨迹，更新策略</span><br></pre></td></tr></table></figure>
+
+<p>这背后的第一性原理很朴素：训练需要的是足够多、足够新、质量可控的轨迹，不一定要求所有轨迹同步到同一个节拍。</p>
+<h2 id="抛开框架，AgentRL-的第一性原理是什么"><a href="#抛开框架，AgentRL-的第一性原理是什么" class="headerlink" title="抛开框架，AgentRL 的第一性原理是什么"></a>抛开框架，AgentRL 的第一性原理是什么</h2><p>如果把名字都拿掉，AgentRL 做的是一件很简单的事：</p>
+<p>给模型一个环境，让它观察状态，选择动作，拿到反馈，再根据反馈调整以后选择动作的概率。</p>
+<p>输入是什么？</p>
+<p>输入不是单个 prompt，而是当前环境状态：用户目标、历史动作、工具返回、文件内容、错误日志、验证结果。</p>
+<p>输出是什么？</p>
+<p>输出也不是单纯一段文本，而是下一步动作。这个动作可能是回答、搜索、打开文件、执行命令、修改代码、提交结果。</p>
+<p>中间保存了什么？</p>
+<p>保存的是轨迹。也就是模型在每个状态下做了什么动作，环境返回了什么，最后得到什么奖励。</p>
+<p>受什么约束？</p>
+<p>受环境速度、奖励质量、上下文长度、工具稳定性、任务分布、训练成本约束。</p>
+<p>所以 AgentRL 的底层逻辑不是“让模型更聪明”。更准确地说，它是在训练模型形成一套行动策略：什么时候探索，什么时候验证，什么时候继续，什么时候停止。</p>
+<p>这也是为什么它和普通 SFT 不一样。</p>
+<p>SFT 学的是“看到这种输入，模仿这个输出”。AgentRL 学的是“在这种状态下，这个动作以后更可能把任务做成”。</p>
+<h2 id="AgentRL-的底层机制怎么跑起来"><a href="#AgentRL-的底层机制怎么跑起来" class="headerlink" title="AgentRL 的底层机制怎么跑起来"></a>AgentRL 的底层机制怎么跑起来</h2><p>根据论文和开源仓库，AgentRL 的核心设计可以概括成三层：任务环境层、轨迹采样层、策略训练层。</p>
+<h3 id="环境层负责把任务变成可交互系统"><a href="#环境层负责把任务变成可交互系统" class="headerlink" title="环境层负责把任务变成可交互系统"></a>环境层负责把任务变成可交互系统</h3><p>环境层要回答几个问题：</p>
+<p>模型能看到什么？</p>
+<p>模型能做什么动作？</p>
+<p>动作执行以后，环境返回什么观察？</p>
+<p>什么时候结束？</p>
+<p>奖励怎么计算？</p>
+<p>比如代码任务里，动作可能包括读文件、改文件、运行测试。检索任务里，动作可能是搜索、打开网页、整理证据。数学任务里，动作可能主要是推理和提交答案。</p>
+<p>如果没有统一环境接口，每类任务都会变成一套孤岛。</p>
+<p>可以用伪代码理解这个接口：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">class</span> <span class="title class_">AgentEnv</span>:</span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">reset</span>(<span class="params">self, task</span>):</span><br><span class="line">        <span class="keyword">return</span> observation</span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">step</span>(<span class="params">self, action</span>):</span><br><span class="line">        observation = run_tool_or_update_state(action)</span><br><span class="line">        reward = compute_reward_if_finished()</span><br><span class="line">        done = check_done()</span><br><span class="line">        <span class="keyword">return</span> observation, reward, done, info</span><br></pre></td></tr></table></figure>
+
+<p>这段代码不是 AgentRL 仓库原样实现，而是为了说明框架的抽象：训练系统不应该关心浏览器怎么点、测试怎么跑，它只需要拿到 observation、reward 和 done。</p>
+<h3 id="轨迹采样层负责让模型多轮行动"><a href="#轨迹采样层负责让模型多轮行动" class="headerlink" title="轨迹采样层负责让模型多轮行动"></a>轨迹采样层负责让模型多轮行动</h3><p>一次 rollout 就是一条轨迹。</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">s0 -&gt; a0 -&gt; s1 -&gt; a1 -&gt; s2 -&gt; a2 -&gt; ... -&gt; reward</span><br></pre></td></tr></table></figure>
+
+<p>在 Agent 场景里，这条轨迹可能很长，而且每个任务长度不一样。</p>
+<p>AgentRL 这类框架的难点，是怎么高效收集这些轨迹。同步采样会慢，完全异步又可能带来策略滞后。训练系统要在吞吐、稳定性、新鲜度之间折中。</p>
+<p>这也是论文里强调 scaling 的原因。Agentic RL 不只是算法问题，它首先是系统问题。</p>
+<h3 id="策略训练层负责把反馈变成参数更新"><a href="#策略训练层负责把反馈变成参数更新" class="headerlink" title="策略训练层负责把反馈变成参数更新"></a>策略训练层负责把反馈变成参数更新</h3><p>有了轨迹以后，训练层要判断哪些动作值得强化。</p>
+<p>如果最终任务成功，轨迹里的动作不一定每一步都好；如果最终失败，也不代表每一步都坏。这是长程 credit assignment 的老问题。</p>
+<p>在 Agent 里它更明显。模型可能前面探索得很好，最后因为一个小错误失败；也可能一路瞎撞，最后侥幸通过。</p>
+<p>所以训练时需要算法和工程一起兜住：限制策略更新幅度，过滤异常轨迹，处理超时和无效动作，稳定 reward 计算。</p>
+<p>一个简化训练循环大概长这样：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">for</span> batch <span class="keyword">in</span> task_stream:</span><br><span class="line">    trajectories = rollout_workers.collect(batch)</span><br><span class="line">    rewards = reward_backend.evaluate(trajectories)</span><br><span class="line">    advantages = estimate_advantage(trajectories, rewards)</span><br><span class="line">    policy.update(trajectories, advantages)</span><br></pre></td></tr></table></figure>
+
+<p>真正的系统会复杂得多，但主线就是这四步：采任务、跑轨迹、算奖励、更新策略。</p>
+<h2 id="为什么它不是“把-PPO-套到-Agent-上”"><a href="#为什么它不是“把-PPO-套到-Agent-上”" class="headerlink" title="为什么它不是“把 PPO 套到 Agent 上”"></a>为什么它不是“把 PPO 套到 Agent 上”</h2><p>PPO 或其他 RL 算法只是训练层的一部分。</p>
+<p>AgentRL 真正麻烦的地方在训练层之外。</p>
+<p>第一，环境要可扩展。你不能为每个任务手写一套脆弱流程。</p>
+<p>第二，rollout 要撑得住。多轮工具调用慢，一慢训练就贵。</p>
+<p>第三，奖励要可信。奖励不稳定，模型学到的就是噪声。</p>
+<p>第四，任务要混得起来。不同任务的轨迹长度、奖励密度、动作空间差异太大，混合训练很容易偏向某一类任务。</p>
+<p>第五，模型更新不能把会做的事情弄坏。Agent 训练有时会强化某些短期有效但长期危险的行为，比如过早停止、少验证、猜答案。</p>
+<p>所以 AgentRL 的工程价值，不只是“用了 RL”。它更像是在给 Agentic RL 搭一个能规模化跑实验的底座。</p>
+<h2 id="我现在怎么理解-AgentRL"><a href="#我现在怎么理解-AgentRL" class="headerlink" title="我现在怎么理解 AgentRL"></a>我现在怎么理解 AgentRL</h2><p>我会把 AgentRL 理解成一套“训练行动策略”的系统，而不是一套“提升回答质量”的技巧。</p>
+<p>它真正关心的是：模型在一个会变化的环境里，能不能根据观察选择下一步动作，并通过可验证反馈慢慢形成更好的做事习惯。</p>
+<p>基础概念里最重要的分界线，是回答和行动的区别。</p>
+<p>回答只需要在当前上下文里生成文本。行动需要改变环境，再根据环境返回继续决策。</p>
+<p>第一性原理也可以压成一句话：AgentRL 把 prompt-response 训练，改成 state-action-reward 训练。</p>
+<p>这句话听起来简单，但它背后意味着整套系统都要变：数据不再只是样本，变成轨迹；标签不再只是答案，变成奖励；推理不再只是生成，变成和环境交互；训练瓶颈不再只是 GPU，也包括环境吞吐、工具稳定性和验证器质量。</p>
+<p>以后再看类似框架，我会先看五件事：</p>
+<ol>
+<li>它的环境接口是不是清楚。</li>
+<li>它怎么做多轮 rollout。</li>
+<li>它的 reward 是否真的可验证。</li>
+<li>它怎么处理慢任务、坏轨迹和超时。</li>
+<li>它最后提升的是“会说”，还是“会做”。</li>
+</ol>
+<p>如果只提升最后回答，那还是偏对齐或推理优化。</p>
+<p>如果它真的让模型在环境里更会行动，那才是 Agentic RL 该有的样子。</p>
+<h2 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a>参考资料</h2><ul>
+<li>THUDM&#x2F;Z.AI AgentRL GitHub：<a target="_blank" rel="noopener" href="https://github.com/THUDM/AgentRL">https://github.com/THUDM/AgentRL</a></li>
+<li>论文：AgentRL: Scaling Agentic Reinforcement Learning with a Multi-Turn, Multi-Task Framework：<a target="_blank" rel="noopener" href="https://arxiv.org/abs/2510.04206">https://arxiv.org/abs/2510.04206</a></li>
+<li>OpenReview 页面：<a target="_blank" rel="noopener" href="https://openreview.net/forum?id=5LOtYkU9D7">https://openreview.net/forum?id=5LOtYkU9D7</a></li>
+<li>Apple 研究博客：Reinforcement Learning for Long-Horizon Interactive LLM Agents：<a target="_blank" rel="noopener" href="https://machinelearning.apple.com/research/llm-agents">https://machinelearning.apple.com/research/llm-agents</a></li>
+</ul>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="https://yeefayai.github.io">YeeFayAI</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://yeefayai.github.io/2026/05/12/AgentRL%E4%B8%BA%E4%BB%80%E4%B9%88%E8%AE%AD%E7%BB%83Agent%E4%B8%8D%E6%98%AF%E6%8A%8ARLHF%E5%A5%97%E4%B8%8A%E5%8E%BB/">https://yeefayai.github.io/2026/05/12/AgentRL%E4%B8%BA%E4%BB%80%E4%B9%88%E8%AE%AD%E7%BB%83Agent%E4%B8%8D%E6%98%AF%E6%8A%8ARLHF%E5%A5%97%E4%B8%8A%E5%8E%BB/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://yeefayai.github.io" target="_blank">YeeFayAI</a>！</span></div></div><div class="tag_share"><div class="post-share"><div class="social-share" data-image="/img/YeeFay.jpg" data-sites="facebook,x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/2026/05/12/Agent%E8%AF%84%E6%B5%8B%E5%9F%BA%E7%BA%BF%E4%B8%8E%E5%9B%9E%E5%BD%92%E9%97%A8%E7%A6%81/" title="Agent评测基线与回归门禁"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">Agent评测基线与回归门禁</div></div><div class="info-2"><div class="info-item-1">Agent评测基线与回归门禁 没有评测基线，所有“变好了”都只是主观感觉。  先说结论Agent 迭代速度快，退化也快。 回归门禁的目标不是阻碍上线，而是防止隐性退化进入生产。 先把基础知识补齐评测至少要覆盖三类指标：  任务成功率 过程质量（步骤正确性、工具调用正确率） 资源效率（延迟、成本、调用次数）  只看最终答对率，会掩盖过程层退化。 这个问题到底在讨论什么不是做一套离线 benchmark 就结束。 核心是“每次改模型、改提示、改工具后，能否快速判定风险变化”。 从基础往外延伸建议拆成两层：  离线回放：固定数据集，比较版本差异。 在线灰度：小流量真实环境，观察真实行为漂移。  离线告诉你“理论变化”，在线告诉你“现实变化”。 这个问题为什么容易想错误区一：评测集长期不更新。 模型会对固定集合过拟合，指标好看但上线翻车。 误区二：只有平均值，没有分位数和长尾分析。 长尾失败往往才是用户投诉来源。 回到第一性原理评测的本质是降低发布不确定性。 门禁规则要绑定业务风险，而不是追求学术完美分数。 真正的机制是什么可执行门禁通常包含：  硬门槛：关键指标低于阈值直接阻断。 软门...</div></div></div></a><a class="pagination-related" href="/2026/05/10/Agent%E6%A3%80%E7%B4%A2%E7%B4%A2%E5%BC%95%E6%9B%B4%E6%96%B0%E4%B8%8E%E4%B8%80%E8%87%B4%E6%80%A7%E5%BB%B6%E8%BF%9F/" title="Agent检索索引更新与一致性延迟"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">Agent检索索引更新与一致性延迟</div></div><div class="info-2"><div class="info-item-1">Agent检索索引更新与一致性延迟 RAG 线上最常见的问题不是“检索不到”，而是“检索到的是昨天的世界”。  先说结论检索系统的核心矛盾是新鲜度、准确率、成本三者拉扯。 索引更新策略如果不透明，Agent 会在“看似有证据”时给出过期结论。 先把基础知识补齐索引更新通常有三种路径：  全量重建：准确但慢、成本高。 增量更新：快，但易产生碎片和漂移。 混合策略：热点增量 + 周期全量校准。  这个问题到底在讨论什么不是向量库选型问题。 核心是“知识变更到可检索之间的延迟是否可控、可观察、可解释”。 从基础往外延伸工程上建议维护三个时间戳：  source_updated_at：源数据更新时间 indexed_at：被写入索引时间 served_at：被检索命中时间  有了这三者，才知道错在数据、索引还是缓存。 这个问题为什么容易想错误区一：只关注召回率，不关注时效偏差。 误区二：认为增量更新天然更好。 增量如果没有删除同步和重排，会长期污染检索结果。 回到第一性原理检索系统本质是延迟一致系统。 你无法消灭延迟，只能定义可接受延迟并围绕它做策略设计。 真正的机制是什么可靠方案通常有...</div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="/img/YeeFay.jpg" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">YeeFayAI</div><div class="author-info-description">Agent is all you need</div><a id="card-info-btn" target="_blank" rel="noopener" href="https://github.com/YeeFayAI"><i class="fab fa-github"></i><span>Follow Me</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/YeeFayAI" target="_blank" title="Github"><i class="fab fa-github" style="color: #24292e;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">Hello, I am YeeFay. Welcome to my blog!</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E8%BF%99%E4%B8%AA%E9%97%AE%E9%A2%98%E4%B8%BA%E4%BB%80%E4%B9%88%E7%AA%81%E7%84%B6%E5%8F%98%E9%87%8D%E8%A6%81"><span class="toc-number">1.</span> <span class="toc-text">这个问题为什么突然变重要</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%88%E6%8A%8A%E5%87%A0%E4%B8%AA%E5%9F%BA%E7%A1%80%E6%A6%82%E5%BF%B5%E6%8B%86%E5%BC%80"><span class="toc-number">2.</span> <span class="toc-text">先把几个基础概念拆开</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-RLHF-%E8%A7%A3%E5%86%B3%E7%9A%84%E6%98%AF%E2%80%9C%E5%9B%9E%E7%AD%94%E5%83%8F%E4%B8%8D%E5%83%8F%E4%BA%BA%E5%96%9C%E6%AC%A2%E2%80%9D"><span class="toc-number">2.1.</span> <span class="toc-text">1. RLHF 解决的是“回答像不像人喜欢”</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-RLVR-%E8%A7%A3%E5%86%B3%E7%9A%84%E6%98%AF%E2%80%9C%E7%BB%93%E6%9E%9C%E8%83%BD%E4%B8%8D%E8%83%BD%E9%AA%8C%E8%AF%81%E2%80%9D"><span class="toc-number">2.2.</span> <span class="toc-text">2. RLVR 解决的是“结果能不能验证”</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-Agentic-RL-%E8%AE%AD%E7%BB%83%E7%9A%84%E6%98%AF%E2%80%9C%E5%81%9A%E4%BA%8B%E8%BF%87%E7%A8%8B%E2%80%9D"><span class="toc-number">2.3.</span> <span class="toc-text">3. Agentic RL 训练的是“做事过程”</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-%E5%A4%9A%E8%BD%AE%E4%B8%8D%E6%98%AF%E2%80%9C%E5%A4%9A%E8%AF%B4%E5%87%A0%E5%8F%A5%E2%80%9D%EF%BC%8C%E8%80%8C%E6%98%AF%E7%8A%B6%E6%80%81%E5%9C%A8%E5%8F%98"><span class="toc-number">2.4.</span> <span class="toc-text">4. 多轮不是“多说几句”，而是状态在变</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-%E5%A4%9A%E4%BB%BB%E5%8A%A1%E4%B8%8D%E6%98%AF%E2%80%9C%E6%95%B0%E6%8D%AE%E9%9B%86%E6%B7%B7%E4%B8%80%E4%B8%8B%E2%80%9D"><span class="toc-number">2.5.</span> <span class="toc-text">5. 多任务不是“数据集混一下”</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-%E5%BC%82%E6%AD%A5-rollout-%E6%98%AF%E4%B8%BA%E4%BA%86%E6%95%91%E5%90%9E%E5%90%90"><span class="toc-number">2.6.</span> <span class="toc-text">6. 异步 rollout 是为了救吞吐</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%8A%9B%E5%BC%80%E6%A1%86%E6%9E%B6%EF%BC%8CAgentRL-%E7%9A%84%E7%AC%AC%E4%B8%80%E6%80%A7%E5%8E%9F%E7%90%86%E6%98%AF%E4%BB%80%E4%B9%88"><span class="toc-number">3.</span> <span class="toc-text">抛开框架，AgentRL 的第一性原理是什么</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#AgentRL-%E7%9A%84%E5%BA%95%E5%B1%82%E6%9C%BA%E5%88%B6%E6%80%8E%E4%B9%88%E8%B7%91%E8%B5%B7%E6%9D%A5"><span class="toc-number">4.</span> <span class="toc-text">AgentRL 的底层机制怎么跑起来</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%8E%AF%E5%A2%83%E5%B1%82%E8%B4%9F%E8%B4%A3%E6%8A%8A%E4%BB%BB%E5%8A%A1%E5%8F%98%E6%88%90%E5%8F%AF%E4%BA%A4%E4%BA%92%E7%B3%BB%E7%BB%9F"><span class="toc-number">4.1.</span> <span class="toc-text">环境层负责把任务变成可交互系统</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%BD%A8%E8%BF%B9%E9%87%87%E6%A0%B7%E5%B1%82%E8%B4%9F%E8%B4%A3%E8%AE%A9%E6%A8%A1%E5%9E%8B%E5%A4%9A%E8%BD%AE%E8%A1%8C%E5%8A%A8"><span class="toc-number">4.2.</span> <span class="toc-text">轨迹采样层负责让模型多轮行动</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%AD%96%E7%95%A5%E8%AE%AD%E7%BB%83%E5%B1%82%E8%B4%9F%E8%B4%A3%E6%8A%8A%E5%8F%8D%E9%A6%88%E5%8F%98%E6%88%90%E5%8F%82%E6%95%B0%E6%9B%B4%E6%96%B0"><span class="toc-number">4.3.</span> <span class="toc-text">策略训练层负责把反馈变成参数更新</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%BA%E4%BB%80%E4%B9%88%E5%AE%83%E4%B8%8D%E6%98%AF%E2%80%9C%E6%8A%8A-PPO-%E5%A5%97%E5%88%B0-Agent-%E4%B8%8A%E2%80%9D"><span class="toc-number">5.</span> <span class="toc-text">为什么它不是“把 PPO 套到 Agent 上”</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%88%91%E7%8E%B0%E5%9C%A8%E6%80%8E%E4%B9%88%E7%90%86%E8%A7%A3-AgentRL"><span class="toc-number">6.</span> <span class="toc-text">我现在怎么理解 AgentRL</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%8F%82%E8%80%83%E8%B5%84%E6%96%99"><span class="toc-number">7.</span> <span class="toc-text">参考资料</span></a></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/05/12/Agent%E8%AF%84%E6%B5%8B%E5%9F%BA%E7%BA%BF%E4%B8%8E%E5%9B%9E%E5%BD%92%E9%97%A8%E7%A6%81/" title="Agent评测基线与回归门禁">Agent评测基线与回归门禁</a><time datetime="2026-05-12T01:00:00.000Z" title="发表于 2026-05-12 09:00:00">2026-05-12</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/05/12/AgentRL%E4%B8%BA%E4%BB%80%E4%B9%88%E8%AE%AD%E7%BB%83Agent%E4%B8%8D%E6%98%AF%E6%8A%8ARLHF%E5%A5%97%E4%B8%8A%E5%8E%BB/" title="AgentRL为什么训练Agent不是把RLHF套上去">AgentRL为什么训练Agent不是把RLHF套上去</a><time datetime="2026-05-11T20:03:51.000Z" title="发表于 2026-05-12 04:03:51">2026-05-12</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/05/10/Agent%E6%A3%80%E7%B4%A2%E7%B4%A2%E5%BC%95%E6%9B%B4%E6%96%B0%E4%B8%8E%E4%B8%80%E8%87%B4%E6%80%A7%E5%BB%B6%E8%BF%9F/" title="Agent检索索引更新与一致性延迟">Agent检索索引更新与一致性延迟</a><time datetime="2026-05-10T01:00:00.000Z" title="发表于 2026-05-10 09:00:00">2026-05-10</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/05/08/Agent%E6%B2%99%E7%AE%B1%E9%9A%94%E7%A6%BB%E4%B8%8E%E6%89%A7%E8%A1%8C%E7%8E%AF%E5%A2%83/" title="Agent沙箱隔离与执行环境">Agent沙箱隔离与执行环境</a><time datetime="2026-05-08T01:00:00.000Z" title="发表于 2026-05-08 09:00:00">2026-05-08</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/05/06/Agent%E5%A4%9A%E7%A7%9F%E6%88%B7%E9%85%8D%E9%A2%9D%E4%B8%8E%E6%88%90%E6%9C%AC%E6%B2%BB%E7%90%86/" title="Agent多租户配额与成本治理">Agent多租户配额与成本治理</a><time datetime="2026-05-06T01:00:00.000Z" title="发表于 2026-05-06 09:00:00">2026-05-06</time></div></div></div></div></div></div></main><footer id="footer" style="background-image: url(/img/footer-bg.jpg);"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;YeeFayAI</span></div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.4"></script><script src="/js/main.js?v=5.5.4"></script><div class="js-pjax"></div><script>
+if (window.location.pathname === '/about/') {
+  const header = document.querySelector('#page-header');
+  if (header) {
+    const videoHtml = `
+      <div class="about-video-header">
+        <video autoplay muted loop playsinline>
+          <source src="/img/about-bg.mp4" type="video/mp4">
+        </video>
+        <div class="video-title">关于我</div>
+      </div>
+    `;
+    header.insertAdjacentHTML('afterend', videoHtml);
+  }
+}
+</script>
+<script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script><div id="local-search"><div class="search-dialog"><nav class="search-nav"><span class="search-dialog-title">搜索</span><i class="fas fa-spinner fa-pulse" id="loading-status" hidden="hidden"></i><button class="search-close-button"><i class="fas fa-times"></i></button></nav><div class="text-center" id="loading-database"><i class="fas fa-spinner fa-pulse"></i><span>  数据加载中</span></div><div class="local-search-input"><input placeholder="Search articles..." type="text"/></div><hr/><div id="local-search-results"></div><div class="ais-Pagination" id="local-search-pagination" style="display:none;"><ul class="ais-Pagination-list"></ul></div><div id="local-search-stats"></div></div><div id="search-mask"></div><script src="/js/search/local-search.js?v=5.5.4"></script></div></div></body></html>
