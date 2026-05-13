@@ -1,0 +1,428 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>从Socket到HTTP3-应用层与传输层全链条梳理 | YeeFayAI</title><meta name="author" content="YeeFayAI"><meta name="copyright" content="YeeFayAI"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#F2EDF7"><meta name="description" content="从 socket 到 HTTP&#x2F;3：应用层与传输层的全链条梳理 这篇文章用一个统一的视角串起计算机网络中”上面怎么调用”和”下面怎么送达”两件事——从操作系统里的 socket 五元组出发，经过 TCP 的字节流保序和 UDP 的裸包直传，往上看到 HTTP 三代演进、REST&#x2F;GraphQL&#x2F;gRPC 三种 API 范式，以及 WebSocket 如何借 HTTP">
+<meta property="og:type" content="article">
+<meta property="og:title" content="从Socket到HTTP3-应用层与传输层全链条梳理">
+<meta property="og:url" content="https://yeefayai.github.io/2026/05/13/%E4%BB%8ESocket%E5%88%B0HTTP3-%E5%BA%94%E7%94%A8%E5%B1%82%E4%B8%8E%E4%BC%A0%E8%BE%93%E5%B1%82%E5%85%A8%E9%93%BE%E6%9D%A1%E6%A2%B3%E7%90%86/index.html">
+<meta property="og:site_name" content="YeeFayAI">
+<meta property="og:description" content="从 socket 到 HTTP&#x2F;3：应用层与传输层的全链条梳理 这篇文章用一个统一的视角串起计算机网络中”上面怎么调用”和”下面怎么送达”两件事——从操作系统里的 socket 五元组出发，经过 TCP 的字节流保序和 UDP 的裸包直传，往上看到 HTTP 三代演进、REST&#x2F;GraphQL&#x2F;gRPC 三种 API 范式，以及 WebSocket 如何借 HTTP">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://yeefayai.github.io/img/YeeFay.jpg">
+<meta property="article:published_time" content="2026-05-13T09:47:13.000Z">
+<meta property="article:modified_time" content="2026-05-13T09:47:13.396Z">
+<meta property="article:author" content="YeeFayAI">
+<meta property="article:tag" content="Agent开发,人工智能,AI助手,大语言模型">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://yeefayai.github.io/img/YeeFay.jpg"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "从Socket到HTTP3-应用层与传输层全链条梳理",
+  "url": "https://yeefayai.github.io/2026/05/13/%E4%BB%8ESocket%E5%88%B0HTTP3-%E5%BA%94%E7%94%A8%E5%B1%82%E4%B8%8E%E4%BC%A0%E8%BE%93%E5%B1%82%E5%85%A8%E9%93%BE%E6%9D%A1%E6%A2%B3%E7%90%86/",
+  "image": "https://yeefayai.github.io/img/YeeFay.jpg",
+  "datePublished": "2026-05-13T09:47:13.000Z",
+  "dateModified": "2026-05-13T09:47:13.396Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "YeeFayAI",
+      "url": "https://yeefayai.github.io"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/YeeFay.jpg"><link rel="canonical" href="https://yeefayai.github.io/2026/05/13/%E4%BB%8ESocket%E5%88%B0HTTP3-%E5%BA%94%E7%94%A8%E5%B1%82%E4%B8%8E%E4%BC%A0%E8%BE%93%E5%B1%82%E5%85%A8%E9%93%BE%E6%9D%A1%E6%A2%B3%E7%90%86/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.5.4"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#3d2b1f')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#F2EDF7')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: {"path":"/search.xml","preload":false,"top_n_per_article":1,"unescape":false,"pagination":{"enable":false,"hitsPerPage":8},"languages":{"hits_empty":"未找到符合您查询的内容：${query}","hits_stats":"共找到 ${hits} 篇文章"}},
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":false},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'null',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: '从Socket到HTTP3-应用层与传输层全链条梳理',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><style>
+/* UI style tweak */
+#nav .menus_item a {
+  font-size: 18px !important;
+}
+/* UI style tweak */
+#search-button .site-page {
+  font-size: 18px !important;
+}
+/* UI style tweak */
+.card-announcement .item-headline i {
+  color: #7B6B8A !important;
+}
+/* UI style tweak */
+.about-video-header {
+  position: relative;
+  width: 100%;
+  height: 60vh;
+  overflow: hidden;
+  margin-top: -60px;
+  margin-bottom: 20px;
+}
+.about-video-header video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.about-video-header .video-title {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: #fff;
+  font-size: 32px;
+  font-weight: 700;
+  text-shadow: 2px 2px 8px rgba(0,0,0,0.5);
+  z-index: 10;
+}
+.about-video-header::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.3);
+}
+</style>
+<meta name="generator" content="Hexo 8.1.1"></head><body><div class="bg-animation" id="web_bg" style="background-color: #F8F5FA;"></div><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="/img/YeeFay.jpg" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 主页</span></a></div><div class="menus_item"><a class="site-page" href="/categories/agent-notes/"><i class="fa-fw fas fa-robot"></i><span> Agent学习笔记</span></a></div><div class="menus_item"><a class="site-page" href="/categories/portfolio/"><i class="fa-fw fas fa-star"></i><span> 作品集</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-user"></i><span> 关于我</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg" id="page-header"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">YeeFayAI</span></a><a class="nav-page-title" href="/"><span class="site-name">从Socket到HTTP3-应用层与传输层全链条梳理</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 主页</span></a></div><div class="menus_item"><a class="site-page" href="/categories/agent-notes/"><i class="fa-fw fas fa-robot"></i><span> Agent学习笔记</span></a></div><div class="menus_item"><a class="site-page" href="/categories/portfolio/"><i class="fa-fw fas fa-star"></i><span> 作品集</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-user"></i><span> 关于我</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">从Socket到HTTP3-应用层与传输层全链条梳理</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-05-13T09:47:13.000Z" title="发表于 2026-05-13 17:47:13">2026-05-13</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-05-13T09:47:13.396Z" title="更新于 2026-05-13 17:47:13">2026-05-13</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/agent-notes/">Agent学习笔记</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><h1 id="从-socket-到-HTTP-3：应用层与传输层的全链条梳理"><a href="#从-socket-到-HTTP-3：应用层与传输层的全链条梳理" class="headerlink" title="从 socket 到 HTTP&#x2F;3：应用层与传输层的全链条梳理"></a>从 socket 到 HTTP&#x2F;3：应用层与传输层的全链条梳理</h1><blockquote>
+<p>这篇文章用一个统一的视角串起计算机网络中”上面怎么调用”和”下面怎么送达”两件事——从操作系统里的 socket 五元组出发，经过 TCP 的字节流保序和 UDP 的裸包直传，往上看到 HTTP 三代演进、REST&#x2F;GraphQL&#x2F;gRPC 三种 API 范式，以及 WebSocket 如何借 HTTP 握手抢占一条 TCP 长连接。读完你会有一个可用以判断新技术的思维框架。</p>
+</blockquote>
+<hr>
+<h2 id="一、先把”层”这件事说清楚"><a href="#一、先把”层”这件事说清楚" class="headerlink" title="一、先把”层”这件事说清楚"></a>一、先把”层”这件事说清楚</h2><p>讲应用层和传输层，绕不开一个问题：<strong>为什么要有层？</strong></p>
+<p>OSI 七层模型是教科书标准，TCP&#x2F;IP 四层模型是互联网事实标准。它们的关系不是竞争，而是”设计图纸”和”实际工程”的关系：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">OSI 七层 (理论)              TCP/IP 四层 (工程)           这一层在干什么</span><br><span class="line">─────────────────────────   ─────────────────────────   ──────────────────</span><br><span class="line">7. 应用层 (Application)  ┐</span><br><span class="line">6. 表示层 (Presentation) ├── 4. 应用层 (Application)     用户能看见的协议：HTTP、DNS、FTP</span><br><span class="line">5. 会话层 (Session)      ┘</span><br><span class="line">4. 传输层 (Transport)    ──── 3. 传输层 (Transport)      端到端可靠/不可靠投递：TCP、UDP</span><br><span class="line">3. 网络层 (Network)      ──── 2. 网际层 (Internet)       跨网络寻址和路由：IP</span><br><span class="line">2. 数据链路层 (Data Link) ┐</span><br><span class="line">1. 物理层 (Physical)     ┘─── 1. 网络接入层 (Link)       同一网段内帧传输：Ethernet、Wi-Fi</span><br></pre></td></tr></table></figure>
+
+<p>TCP&#x2F;IP 把 OSI 的上三层（应用、表示、会话）全部压进了”应用层”。这意味着现实中 HTTP 不仅管”发什么请求”，还自己处理 TLS 加密（表示层的活）和 Cookie&#x2F;Session 管理（会话层的活）。</p>
+<p><strong>封装的真正含义</strong>：数据从上层往下传，每一层加上自己的头。应用层发出去的是一段字节，到了传输层被切成 segment 并加上 TCP 头，到了网络层包上 IP 头变成 packet，到了链路层帧化成 frame。接收方一层层剥开。这个”包信封”的过程，是理解所有网络协议的第一把钥匙。</p>
+<hr>
+<h2 id="二、传输层的第一性原理：两台机器之间到底要保证什么"><a href="#二、传输层的第一性原理：两台机器之间到底要保证什么" class="headerlink" title="二、传输层的第一性原理：两台机器之间到底要保证什么"></a>二、传输层的第一性原理：两台机器之间到底要保证什么</h2><p>抛开所有术语，传输层要回答的问题极其简单：</p>
+<blockquote>
+<p><strong>IP 层只负责把包从一台机器扔到另一台机器。但如果包丢了？中间网络堵了？接收方处理不过来？这些 IP 一概不管。传输层的存在，就是为了给上层提供一种关于”送达”的承诺。</strong></p>
+</blockquote>
+<p>TCP 和 UDP 给出了两种截然不同的承诺：</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>TCP</th>
+<th>UDP</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>承诺</strong></td>
+<td>有序、可靠、不丢不重、流量自适应</td>
+<td>尽力而为，什么都不保证</td>
+</tr>
+<tr>
+<td><strong>抽象</strong></td>
+<td>字节流——没有消息边界，就像一根水管</td>
+<td>数据报——保留消息边界，每个包独立</td>
+</tr>
+<tr>
+<td><strong>连接</strong></td>
+<td>有状态，先握手再传数据，最后挥手</td>
+<td>无状态，直接发，无需建立</td>
+</tr>
+<tr>
+<td><strong>代价</strong></td>
+<td>20-60 字节头 + 三次握手 1 RTT + 维护连接状态</td>
+<td>8 字节头 + 零握手</td>
+</tr>
+</tbody></table>
+<p>这两个承诺的区别，构成了上层一切协议的分岔路口。</p>
+<hr>
+<h2 id="三、TCP-到底做了什么——八件事拆开看"><a href="#三、TCP-到底做了什么——八件事拆开看" class="headerlink" title="三、TCP 到底做了什么——八件事拆开看"></a>三、TCP 到底做了什么——八件事拆开看</h2><p>TCP 不是一个”可靠的 UDP”，它是一个精密的状态机。每一项机制都在解决一个具体问题：</p>
+<h3 id="1-三次握手——确认双方收发能力"><a href="#1-三次握手——确认双方收发能力" class="headerlink" title="1. 三次握手——确认双方收发能力"></a>1. 三次握手——确认双方收发能力</h3><figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">Client                          Server</span><br><span class="line">  |-------- SYN (seq=x) --------&gt;|</span><br><span class="line">  |&lt;--- SYN-ACK (seq=y, ack=x+1) |</span><br><span class="line">  |-------- ACK (ack=y+1) ------&gt;|</span><br></pre></td></tr></table></figure>
+
+<p>这不是”打个招呼”。三次握手的实质是<strong>双方各自证明自己的收发通道畅通</strong>：第一次证明客户端能发，第二次证明服务端能收也能发，第三次证明客户端能收。两个 RTT 之后，双方确认序列号同步，连接建立。</p>
+<h3 id="2-序列号和确认号——给每个字节编号"><a href="#2-序列号和确认号——给每个字节编号" class="headerlink" title="2. 序列号和确认号——给每个字节编号"></a>2. 序列号和确认号——给每个字节编号</h3><p>TCP 把数据看作一个连续的字节流，每个字节有一个 32 位序列号。接收方回复的 ACK 里带着”我期望的下一个字节序号”，也就是 <code>last_received_byte + 1</code>。发送方据此知道哪些字节已经被成功接收。</p>
+<h3 id="3-超时重传——兜底保障"><a href="#3-超时重传——兜底保障" class="headerlink" title="3. 超时重传——兜底保障"></a>3. 超时重传——兜底保障</h3><p>每发出一个 segment，启动一个定时器。如果 RTO（Retransmission Timeout）内没收到 ACK，就重传。RTO 不是固定值——TCP 持续采样 RTT（Round-Trip Time），用指数加权移动平均动态计算。丢包时 RTO 还会翻倍（指数退避），避免把已经拥塞的网络压死。</p>
+<h3 id="4-快速重传——不必等超时"><a href="#4-快速重传——不必等超时" class="headerlink" title="4. 快速重传——不必等超时"></a>4. 快速重传——不必等超时</h3><p>如果发送方连续收到 <strong>3 个重复 ACK</strong>（即对方收到了后面的数据但中间缺了一个 segment），立即重传缺失的 segment，不等 RTO 超时。这是一个基于推理的优化：收到后续数据说明网络没断，只是丢了一个包。</p>
+<h3 id="5-流量控制——保护接收方"><a href="#5-流量控制——保护接收方" class="headerlink" title="5. 流量控制——保护接收方"></a>5. 流量控制——保护接收方</h3><p>每个 TCP 头里有一个 16 位的 <strong>窗口大小（Window Size）</strong> 字段——接收方告诉发送方”我的缓冲区还剩多少空间”。发送方的在途数据量永远不会超过这个值。这是一个纯粹的接收方保护机制——防止快发送方淹没慢接收方。</p>
+<h3 id="6-拥塞控制——保护网络"><a href="#6-拥塞控制——保护网络" class="headerlink" title="6. 拥塞控制——保护网络"></a>6. 拥塞控制——保护网络</h3><p>流量控制保护接收方，拥塞控制保护<strong>中间的路由器和链路</strong>。TCP 维护一个拥塞窗口 (<code>cwnd</code>)，实际发送窗口是 <code>min(rwnd, cwnd)</code>：</p>
+<ul>
+<li><strong>慢启动</strong>：<code>cwnd</code> 从 1 MSS 开始，每 RTT 翻倍，指数增长直到碰到阈值</li>
+<li><strong>拥塞避免</strong>：超过阈值后线性增长（每 RTT +1 MSS），探测剩余带宽</li>
+<li><strong>丢包反应</strong>：3 个重复 ACK → <code>cwnd</code> 减半 + 快速恢复；RTO 超时 → <code>cwnd</code> 重置为 1 + 重新慢启动</li>
+</ul>
+<p>这个机制是互联网没有在 1990 年代就集体崩溃的核心原因。</p>
+<h3 id="7-四次挥手——全双工的优雅关闭"><a href="#7-四次挥手——全双工的优雅关闭" class="headerlink" title="7. 四次挥手——全双工的优雅关闭"></a>7. 四次挥手——全双工的优雅关闭</h3><p>TCP 是全双工的，每个方向独立关闭：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">A                           B</span><br><span class="line"> |------- FIN (seq=u) ------&gt;|   &quot;我不发了&quot;</span><br><span class="line"> |&lt;----- ACK (ack=u+1) ------|   &quot;收到&quot;（但 B 可能还在发）</span><br><span class="line"> |&lt;----- FIN (seq=v) --------|   &quot;我也不发了&quot;</span><br><span class="line"> |------ ACK (ack=v+1) -----&gt;|   &quot;收到&quot;</span><br></pre></td></tr></table></figure>
+
+<p>四次的原因在于半关闭状态：一方停止发送后，另一方可能还有数据要传。最后发起关闭的一方会进入 <strong>TIME_WAIT</strong> 状态等待 2MSL（最长报文生存时间的两倍），确保最后的 ACK 能被对方收到、且旧连接的残余包在网络中消失。</p>
+<h3 id="8-TCP-头解剖——每一段都有用途"><a href="#8-TCP-头解剖——每一段都有用途" class="headerlink" title="8. TCP 头解剖——每一段都有用途"></a>8. TCP 头解剖——每一段都有用途</h3><figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"> 0                            15 16                            31</span><br><span class="line">+--------+--------+--------+--------+--------+--------+--------+--------+</span><br><span class="line">|   Source Port (16)     |  Destination Port (16)  |  Sequence Number (32) |</span><br><span class="line">+--------+--------+--------+--------+--------+--------+--------+--------+</span><br><span class="line">|  Acknowledgment Number (32)  | HdrLen | Flags |URG|ACK|PSH|RST|SYN|FIN| |</span><br><span class="line">+--------+--------+--------+--------+--------+--------+--------+--------+</span><br><span class="line">|  Window Size (16)     |  Checksum (16)    |  Urgent Pointer (16)        |</span><br><span class="line">+--------+--------+--------+--------+--------+--------+--------+--------+</span><br><span class="line">|  Options (variable, padded to 32-bit)                                    |</span><br><span class="line">+--------+--------+--------+--------+--------+--------+--------+--------+</span><br></pre></td></tr></table></figure>
+
+<p>20 字节最小头部承载了连接标识、顺序保证、可靠性和流量控制四件事。对比 UDP 的 8 字节固定头，这是 TCP “笨重”的根源——但它不是无意义的笨重，每一段都对应一个具体问题。</p>
+<hr>
+<h2 id="四、UDP-的不作为，是一种精密的算计"><a href="#四、UDP-的不作为，是一种精密的算计" class="headerlink" title="四、UDP 的不作为，是一种精密的算计"></a>四、UDP 的不作为，是一种精密的算计</h2><p>UDP 头只有 8 个字节：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"> 0                            15 16                            31</span><br><span class="line">+--------+--------+--------+--------+--------+--------+--------+--------+</span><br><span class="line">|   Source Port (16)     |  Destination Port (16)  |  Length (16) | Csum  |</span><br><span class="line">+--------+--------+--------+--------+--------+--------+--------+--------+</span><br><span class="line">|                                  Data...                                 |</span><br><span class="line">+--------+--------+--------+--------+--------+--------+--------+--------+</span><br></pre></td></tr></table></figure>
+
+<p>没有序列号，没有确认号，没有窗口，没有标志位。UDP 只比 IP 多了一件事：<strong>端口号</strong>，让同一台机器上的多个应用程序可以独立收发数据。</p>
+<p><strong>UDP 的”不作为”有三个精确的适用场景：</strong></p>
+<ol>
+<li><strong>对延迟敏感但对偶发丢包不敏感</strong>：VoIP、视频通话、在线游戏。一个语音包晚到 500ms 比不到更糟——重传对实时性毫无帮助。</li>
+<li><strong>单次请求-响应，自己处理重试</strong>：DNS 查询通常是 1 个 UDP 包发过去，1 个包回来。如果丢包，客户端自己重新发一次，比建立 TCP 连接再发要快一个 RTT。</li>
+<li><strong>作为新型传输协议的地基</strong>：QUIC 把 TCP 的可靠性、拥塞控制、TLS 加密全部在用户空间实现，底层只借 UDP 的端口复用。这是对 UDP 最高级的使用——不是因为不需要 TCP 的能力，而是因为<strong>需要这些能力但不想被内核 TCP 栈的实现细节锁死</strong>。</li>
+</ol>
+<hr>
+<h2 id="五、Socket：应用层伸向传输层的那只手"><a href="#五、Socket：应用层伸向传输层的那只手" class="headerlink" title="五、Socket：应用层伸向传输层的那只手"></a>五、Socket：应用层伸向传输层的那只手</h2><p>你在代码里写 <code>socket(AF_INET, SOCK_STREAM, 0)</code> 的那一刻，正好站在应用层和传输层的分界线上。</p>
+<p>Socket（Berkeley Sockets）是操作系统提供给用户程序的网络编程接口。它是一个抽象——把 TCP 的字节流和 UDP 的数据报统一成”文件描述符”模型：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">应用层代码</span><br><span class="line">    │  socket() / bind() / listen() / accept() / connect()</span><br><span class="line">    │  send() / recv() / sendto() / recvfrom()</span><br><span class="line">    │  read() / write()  ← 甚至可以直接用文件 I/O</span><br><span class="line">────┼──────────────────────────────────────────── 用户态 / 内核态</span><br><span class="line">    │  TCP 栈 / UDP 栈</span><br><span class="line">    │  端口 → 进程的多路分解</span><br><span class="line">    │  缓冲区管理、重传、乱序重组</span><br><span class="line">    │</span><br><span class="line">    ▼  IP 层</span><br></pre></td></tr></table></figure>
+
+<p>一个 TCP 连接的唯一标识是 <strong>五元组</strong>：<code>(源IP, 源端口, 协议, 目的IP, 目的端口)</code>。这就是为什么一台服务器只监听 80 端口却能同时服务几万个客户端——每个客户端的 IP+端口组合不同，五元组不同，内核可以精确地把每个入站包投递到对应的 socket。</p>
+<p><strong>Socket 和上层 API 范式的关系</strong>：</p>
+<ul>
+<li>你写 REST API 时不需要碰 socket——HTTP 库帮你管了</li>
+<li>你用 gRPC 时不需要碰 socket——gRPC 框架帮你管了</li>
+<li>但当你用 Wireshark 抓到”TCP Retransmission”或者”Connection Reset”时，你面对的正是 socket 下面的传输层机制</li>
+<li><strong>知道 socket 的存在，是理解”为什么 HTTP&#x2F;3 要换掉 TCP”的关键</strong>——因为 TCP 在内核里，升级 TCP 栈意味着升级操作系统，而 QUIC 在用户空间，升级一个库就行</li>
+</ul>
+<hr>
+<h2 id="六、HTTP-三代演进：一次对-TCP-的逐步逃离"><a href="#六、HTTP-三代演进：一次对-TCP-的逐步逃离" class="headerlink" title="六、HTTP 三代演进：一次对 TCP 的逐步逃离"></a>六、HTTP 三代演进：一次对 TCP 的逐步逃离</h2><p>应用层中最具统治地位的协议——HTTP——的进化史，本质上是一部和 TCP 的”痛点”反复博弈的历史。</p>
+<h3 id="HTTP-1-1-—-成也-TCP，困也-TCP"><a href="#HTTP-1-1-—-成也-TCP，困也-TCP" class="headerlink" title="HTTP&#x2F;1.1 — 成也 TCP，困也 TCP"></a>HTTP&#x2F;1.1 — 成也 TCP，困也 TCP</h3><p>HTTP&#x2F;1.1 是纯文本协议，每个请求独占一个 TCP 连接（后来加了 <code>Keep-Alive</code> 可以复用）。问题出在 <strong>队头阻塞（Head-of-Line Blocking）</strong>：一个连接上，前一个请求的响应没回来，后面的请求只能排队等待。浏览器开了 6 个并行连接来缓解，但治标不治本。</p>
+<h3 id="HTTP-2-—-在-TCP-之上修复-HTTP-层面的队头阻塞"><a href="#HTTP-2-—-在-TCP-之上修复-HTTP-层面的队头阻塞" class="headerlink" title="HTTP&#x2F;2 — 在 TCP 之上修复 HTTP 层面的队头阻塞"></a>HTTP&#x2F;2 — 在 TCP 之上修复 HTTP 层面的队头阻塞</h3><p>HTTP&#x2F;2 用<strong>二进制分帧 + 多路复用</strong>解决了 HTTP&#x2F;1.1 的队头阻塞：多个请求-响应在同一个 TCP 连接上交织传输，每个流有独立的流 ID，互不阻塞。这是巨大的进步。</p>
+<p>但 HTTP&#x2F;2 引入了一个隐蔽的新问题：<strong>TCP 层的队头阻塞</strong>。所有 HTTP&#x2F;2 的流跑在同一条 TCP 连接上，如果 TCP 丢了一个包，整个连接的窗口停止滑动，所有流一起卡住等重传——即使丢包只影响其中一个流的数据。</p>
+<h3 id="HTTP-3-—-放弃-TCP，投奔-QUIC"><a href="#HTTP-3-—-放弃-TCP，投奔-QUIC" class="headerlink" title="HTTP&#x2F;3 — 放弃 TCP，投奔 QUIC"></a>HTTP&#x2F;3 — 放弃 TCP，投奔 QUIC</h3><p>HTTP&#x2F;3（RFC 9114，2022 年标准化）做了最激进的决定：<strong>不再使用 TCP</strong>，改为运行在 QUIC 之上，而 QUIC 跑在 UDP 之上。</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">HTTP/1.1           HTTP/2           HTTP/3</span><br><span class="line">─────────          ───────          ─────────</span><br><span class="line">  HTTP              HTTP              HTTP</span><br><span class="line">   │                 │                 │</span><br><span class="line">  TCP               TCP              QUIC</span><br><span class="line">   │                 │ (多流共享       │ (独立流，</span><br><span class="line"> TLS               TLS  同一TCP)     TLS 集成，</span><br><span class="line">   │                 │                 │  0-RTT)</span><br><span class="line">   IP                IP               UDP</span><br><span class="line">                                       │</span><br><span class="line">                                       IP</span><br></pre></td></tr></table></figure>
+
+<p>QUIC 解决的核心问题：</p>
+<table>
+<thead>
+<tr>
+<th>TCP 的痛</th>
+<th>QUIC 的解</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>TCP 丢包阻塞所有 HTTP&#x2F;2 流</td>
+<td>每个 QUIC 流独立，丢包只影响自己的流</td>
+</tr>
+<tr>
+<td>TCP + TLS 握手需要 2-3 RTT</td>
+<td>QUIC 集成 TLS 1.3，首次 1 RTT，重连 0 RTT</td>
+</tr>
+<tr>
+<td>TCP 用 IP:Port 标识连接，切换网络断开</td>
+<td>QUIC 用 Connection ID，Wi-Fi → 5G 无感迁移</td>
+</tr>
+<tr>
+<td>TCP 头明文，中间设备会干扰</td>
+<td>QUIC 几乎全加密，只暴露最小”线缆影像”</td>
+</tr>
+</tbody></table>
+<p>到 2025 年，HTTP&#x2F;3 已覆盖约 52% 的全球 Top 100 万网站。所有主流浏览器默认支持。这不是纸面协议——它已经在承载你的日常流量。</p>
+<hr>
+<h2 id="七、API-三种范式：站在-HTTP-肩膀上盖房子"><a href="#七、API-三种范式：站在-HTTP-肩膀上盖房子" class="headerlink" title="七、API 三种范式：站在 HTTP 肩膀上盖房子"></a>七、API 三种范式：站在 HTTP 肩膀上盖房子</h2><p>有了 HTTP 这个”运输层”，开发者还需要一套<strong>调用远程服务的约定</strong>。REST、GraphQL、gRPC 是三种截然不同的答案。它们与 HTTP 的关系，决定了各自的能力边界：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">┌─────────────────────────────────────────────┐</span><br><span class="line">│              应用层 API 范式                  │</span><br><span class="line">│                                             │</span><br><span class="line">│   REST            GraphQL         gRPC      │</span><br><span class="line">│  (架构风格)       (查询语言)      (RPC框架)   │</span><br><span class="line">│     │                │              │        │</span><br><span class="line">│     ├── HTTP/1.1 ────┤              │        │</span><br><span class="line">│     │  语义即接口     │   HTTP仅管道   │        │</span><br><span class="line">│     │                │              │        │</span><br><span class="line">│     └────────────────┴──── HTTP/2 ──┘        │</span><br><span class="line">│                             二进制帧         │</span><br><span class="line">│                             多路复用         │</span><br><span class="line">│                             流式传输         │</span><br><span class="line">└─────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure>
+
+<h3 id="REST-—-HTTP-即接口"><a href="#REST-—-HTTP-即接口" class="headerlink" title="REST — HTTP 即接口"></a>REST — HTTP 即接口</h3><p>REST 把 HTTP 的每个元素都变成了 API 语义：URL 路径是资源地址，GET&#x2F;POST&#x2F;PUT&#x2F;DELETE 是操作动作，状态码是结果。这是和 HTTP 最紧密耦合的风格——它能直接利用所有 HTTP 中间件（缓存、CDN、负载均衡、代理），代价是过获取（over-fetching）和欠获取（under-fetching）问题无法在协议层面解决。</p>
+<h3 id="GraphQL-—-HTTP-降级为运输管道"><a href="#GraphQL-—-HTTP-降级为运输管道" class="headerlink" title="GraphQL — HTTP 降级为运输管道"></a>GraphQL — HTTP 降级为运输管道</h3><p>GraphQL 把操作语义从 HTTP Method 移到了请求体内部。它几乎只用 POST，因为所有的 <code>query</code> &#x2F; <code>mutation</code> &#x2F; <code>subscription</code> 都在 JSON body 里描述。HTTP 变成了一个纯粹的传输管道。代价是无法利用 HTTP 缓存，好处是客户端可以精确指定要哪些字段——解决过获取和欠获取。</p>
+<h3 id="gRPC-—-对-HTTP-2-的高级封装"><a href="#gRPC-—-对-HTTP-2-的高级封装" class="headerlink" title="gRPC — 对 HTTP&#x2F;2 的高级封装"></a>gRPC — 对 HTTP&#x2F;2 的高级封装</h3><p>gRPC 直接面向开发者隐藏了 HTTP。你在 <code>.proto</code> 文件里定义 RPC 方法，框架生成代码，然后调用远程方法就像调本地函数。下层利用 HTTP&#x2F;2 的多路复用 + 二进制帧 + 流式传输。数据用 Protocol Buffers 序列化，比 JSON 体积小 3-10 倍。代价是浏览器不能直接调用（需要 gRPC-Web 代理），调试也比文本协议困难。</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>REST</th>
+<th>GraphQL</th>
+<th>gRPC</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>HTTP 角色</strong></td>
+<td>接口本身</td>
+<td>纯传输管道</td>
+<td>高性能运输层</td>
+</tr>
+<tr>
+<td><strong>数据格式</strong></td>
+<td>JSON</td>
+<td>JSON</td>
+<td>Protobuf 二进制</td>
+</tr>
+<tr>
+<td><strong>最适合</strong></td>
+<td>公共 API、CRUD</td>
+<td>多端聚合、复杂查询</td>
+<td>微服务间、低带宽</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="八、WebSocket：一个特别的特例"><a href="#八、WebSocket：一个特别的特例" class="headerlink" title="八、WebSocket：一个特别的特例"></a>八、WebSocket：一个特别的特例</h2><p>WebSocket（RFC 6455）在这个话题里值得单列。因为它的存在方式在整条链上独一无二：</p>
+<p><strong>它以 HTTP 开始，然后抛弃 HTTP。</strong></p>
+<ol>
+<li>客户端发一个带 <code>Upgrade: websocket</code> 头的 HTTP GET 请求</li>
+<li>服务器回 <code>101 Switching Protocols</code></li>
+<li>从这一刻起，双方<strong>彻底停止使用 HTTP</strong>，转而使用 WebSocket 二进制帧协议</li>
+</ol>
+<p>之后这条 TCP 连接不再承载 HTTP 请求-响应，而是作为一条<strong>全双工、持久化的消息通道</strong>存在。每一帧的头部最小只有 2 个字节。双方可以随时向对方推送数据。</p>
+<p>WebSocket 和 HTTP 的关系，RFC 6455 的原文说得最精确：</p>
+<blockquote>
+<p>“The WebSocket Protocol is an independent TCP-based protocol. Its only relationship to HTTP is that its handshake is interpreted by HTTP servers as an Upgrade request.”</p>
+</blockquote>
+<p>它借 HTTP 握手完成三件事：<strong>防火墙穿越</strong>（跑在 80&#x2F;443 端口）、<strong>安全协商</strong>（wss:&#x2F;&#x2F; 下走 TLS）、<strong>能力证明</strong>（<code>Sec-WebSocket-Accept</code> 响应头证明服务器理解 WebSocket 协议）。握手完成之后，HTTP 的使命就结束了。</p>
+<p>在整条栈上，WebSocket 的位置很微妙：它基于 TCP，但既不是 HTTP 也不是单独的传输层协议——它是在 TCP 之上定义了一套自己的帧协议，专门为实时双向通信优化。</p>
+<hr>
+<h2 id="九、以后我怎么判断一个新的网络协议"><a href="#九、以后我怎么判断一个新的网络协议" class="headerlink" title="九、以后我怎么判断一个新的网络协议"></a>九、以后我怎么判断一个新的网络协议</h2><p>看完这条从 socket 到 HTTP&#x2F;3 的全链条，我形成了一套稳定的判断框架。每当遇到一个新的网络协议或 API 方案，我会问自己这四个问题：</p>
+<p><strong>1. 它在哪一层解决问题？</strong> 是传输层（像 QUIC），还是应用层（像 GraphQL），还是在两者之间（像 WebSocket）？层次越低，影响面越广但改动越难；层次越高，部署越容易但绕不过下层约束。</p>
+<p><strong>2. 它继承了下面一层的什么？又放弃了什么？</strong> HTTP&#x2F;3 继承了 HTTP 语义但放弃了 TCP，gRPC 放弃了 HTTP 的原生可见性但换来了性能，WebSocket 借了 HTTP 的握手但放弃了 HTTP 的请求-响应模型。每次放弃背后都有一个明确的权衡。</p>
+<p><strong>3. 它的核心抽象是对齐到”字节流”还是”消息”？</strong> 这是传输层往下走的分岔点。TCP 的字节流适合请求-响应和文件传输，UDP 的消息边界适合实时媒体和协议创新。QUIC 的精妙之处在于它在 UDP 的消息之上重建了”可靠流”和”不可靠数据报”两种抽象。</p>
+<p><strong>4. 中间设备会怎么对待它？</strong> 这是容易被忽略的工程现实。HTTP 统治互联网的一个重要原因是大批企业防火墙、代理、负载均衡器只理解和放行 HTTP。WebSocket 借 HTTP 握手穿越防火墙，QUIC 因为 UDP 被 ~25% 的企业网阻拦——协议设计者的意图和网络运维的现实之间永远有距离。</p>
+<p>理解了这条链，你就不会被”新协议取代旧协议”的叙事带着走。TCP 没有被 HTTP&#x2F;3 淘汰——它只是退到了更适合它的场景（数据库连接、SSH、邮件传输）。UDP 也没有因为 QUIC 而变得”可靠”——QUIC 在 UDP 之上重建了可靠性，但 UDP 本身依然是不靠谱的。<strong>每一层都在做它最擅长的事，而创新往往发生在某一层之上的重新想象。</strong></p>
+<hr>
+<h2 id="参考文献"><a href="#参考文献" class="headerlink" title="参考文献"></a>参考文献</h2><ol>
+<li><a target="_blank" rel="noopener" href="https://datatracker.ietf.org/doc/html/rfc793">RFC 793 — Transmission Control Protocol</a></li>
+<li><a target="_blank" rel="noopener" href="https://datatracker.ietf.org/doc/html/rfc768">RFC 768 — User Datagram Protocol</a></li>
+<li><a target="_blank" rel="noopener" href="https://datatracker.ietf.org/doc/html/rfc6455">RFC 6455 — The WebSocket Protocol</a></li>
+<li><a target="_blank" rel="noopener" href="https://www.rfc-editor.org/rfc/rfc9114">RFC 9114 — HTTP&#x2F;3</a></li>
+<li><a target="_blank" rel="noopener" href="https://datatracker.ietf.org/doc/html/rfc9000">RFC 9000 — QUIC: A UDP-Based Multiplexed and Secure Transport</a></li>
+<li><a target="_blank" rel="noopener" href="https://datatracker.ietf.org/doc/html/rfc7540">RFC 7540 — HTTP&#x2F;2</a></li>
+<li><a target="_blank" rel="noopener" href="https://runebook.dev/zh/docs/http/rfc9114#section-10.1">RFC 9114 解读：HTTP&#x2F;3 (QUIC) 部署的挑战与回退策略</a></li>
+<li><a target="_blank" rel="noopener" href="https://debugg.ai/resources/http3-for-microservices-2025-quic-grpc-h3-0rtt-risks-migration-playbook">HTTP&#x2F;3 for Microservices in 2025: QUIC, gRPC over h3, 0-RTT Risks</a></li>
+<li><a target="_blank" rel="noopener" href="https://ostinato.org/guides/tcp-vs-udp-understanding-differences-and-use-cases">TCP vs UDP: Understanding Differences and Use Cases — OSTInato</a></li>
+<li><a target="_blank" rel="noopener" href="https://github.com/VasanthVanan/computer-networking-top-down-approach-notes">Computer Networking: A Top-Down Approach — Chapter 3: Transport Layer Notes</a></li>
+<li><a target="_blank" rel="noopener" href="https://www.baeldung-cn.com/rest-vs-graphql-vs-grpc">REST vs. GraphQL vs. gRPC — Baeldung</a></li>
+<li><a target="_blank" rel="noopener" href="https://blog.apilayer.com/graphql-vs-rest-vs-grpc-which-should-you-choose-and-when/">GraphQL vs REST vs gRPC: Which Should You Choose — APILayer</a></li>
+<li><a target="_blank" rel="noopener" href="https://websocket.org/guides/websocket-protocol">WebSocket Protocol: RFC 6455 Handshake, Frames &amp; More</a></li>
+<li><a target="_blank" rel="noopener" href="https://csis.pace.edu/~marchese/CS865/Lectures/Liu4/sockets">The Socket API — CSIS Pace University</a></li>
+<li><a target="_blank" rel="noopener" href="https://cloud.tencent.cn/developer/article/1732190">TCP&#x2F;IP Model vs OSI Model — Tencent Cloud</a></li>
+</ol>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="https://yeefayai.github.io">YeeFayAI</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://yeefayai.github.io/2026/05/13/%E4%BB%8ESocket%E5%88%B0HTTP3-%E5%BA%94%E7%94%A8%E5%B1%82%E4%B8%8E%E4%BC%A0%E8%BE%93%E5%B1%82%E5%85%A8%E9%93%BE%E6%9D%A1%E6%A2%B3%E7%90%86/">https://yeefayai.github.io/2026/05/13/%E4%BB%8ESocket%E5%88%B0HTTP3-%E5%BA%94%E7%94%A8%E5%B1%82%E4%B8%8E%E4%BC%A0%E8%BE%93%E5%B1%82%E5%85%A8%E9%93%BE%E6%9D%A1%E6%A2%B3%E7%90%86/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://yeefayai.github.io" target="_blank">YeeFayAI</a>！</span></div></div><div class="tag_share"><div class="post-share"><div class="social-share" data-image="/img/YeeFay.jpg" data-sites="facebook,x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related full-width" href="/2026/05/13/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F%E8%BF%9B%E7%A8%8B%E7%BA%BF%E7%A8%8B%E5%8D%8F%E7%A8%8B%E7%9A%84%E6%9C%AC%E8%B4%A8%E5%8C%BA%E5%88%AB/" title="操作系统进程线程协程的本质区别"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">操作系统进程线程协程的本质区别</div></div><div class="info-2"><div class="info-item-1">进程、线程、协程：一次讲清楚它们到底在争什么 这篇文章从操作系统的视角出发，把进程、线程、协程三个概念拆到底层实现层面来讲。读完你会明白它们各自拥有什么资源、切换时付出什么代价、以及为什么现代语言运行时要在内核线程之上再造一层调度。  为什么这三个词总是一起出现却总是讲不清学操作系统的时候，教材会告诉你：进程是资源分配的基本单位，线程是调度的基本单位。然后你去写 Go，发现 goroutine 既不是进程也不是传统线程；去写 Python，发现 asyncio 的协程跑在单线程里却能并发处理上千连接。 混乱的根源在于：这三个概念不在同一个抽象层。进程和线程是操作系统内核提供的抽象，协程是用户态运行时提供的抽象。它们解决的问题不同，付出的代价不同，能做到的事情也不同。 把它们放在一起比较，必须先搞清楚每一层到底管了什么。 Linux 内核眼里只有 task_struct在 Linux 内核的实现里，根本没有”进程”和”线程”两种不同的数据结构。内核只有一种东西：task_struct。每一个可调度的执行单元，不管你在用户空间叫它进程还是线程，在内核里都是一个 task_struct...</div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="/img/YeeFay.jpg" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">YeeFayAI</div><div class="author-info-description">Agent is all you need</div><a id="card-info-btn" target="_blank" rel="noopener" href="https://github.com/YeeFayAI"><i class="fab fa-github"></i><span>Follow Me</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/YeeFayAI" target="_blank" title="Github"><i class="fab fa-github" style="color: #24292e;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">Hello, I am YeeFay. Welcome to my blog!</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E4%BB%8E-socket-%E5%88%B0-HTTP-3%EF%BC%9A%E5%BA%94%E7%94%A8%E5%B1%82%E4%B8%8E%E4%BC%A0%E8%BE%93%E5%B1%82%E7%9A%84%E5%85%A8%E9%93%BE%E6%9D%A1%E6%A2%B3%E7%90%86"><span class="toc-number">1.</span> <span class="toc-text">从 socket 到 HTTP&#x2F;3：应用层与传输层的全链条梳理</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E5%85%88%E6%8A%8A%E2%80%9D%E5%B1%82%E2%80%9D%E8%BF%99%E4%BB%B6%E4%BA%8B%E8%AF%B4%E6%B8%85%E6%A5%9A"><span class="toc-number">1.1.</span> <span class="toc-text">一、先把”层”这件事说清楚</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E4%BC%A0%E8%BE%93%E5%B1%82%E7%9A%84%E7%AC%AC%E4%B8%80%E6%80%A7%E5%8E%9F%E7%90%86%EF%BC%9A%E4%B8%A4%E5%8F%B0%E6%9C%BA%E5%99%A8%E4%B9%8B%E9%97%B4%E5%88%B0%E5%BA%95%E8%A6%81%E4%BF%9D%E8%AF%81%E4%BB%80%E4%B9%88"><span class="toc-number">1.2.</span> <span class="toc-text">二、传输层的第一性原理：两台机器之间到底要保证什么</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81TCP-%E5%88%B0%E5%BA%95%E5%81%9A%E4%BA%86%E4%BB%80%E4%B9%88%E2%80%94%E2%80%94%E5%85%AB%E4%BB%B6%E4%BA%8B%E6%8B%86%E5%BC%80%E7%9C%8B"><span class="toc-number">1.3.</span> <span class="toc-text">三、TCP 到底做了什么——八件事拆开看</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-%E4%B8%89%E6%AC%A1%E6%8F%A1%E6%89%8B%E2%80%94%E2%80%94%E7%A1%AE%E8%AE%A4%E5%8F%8C%E6%96%B9%E6%94%B6%E5%8F%91%E8%83%BD%E5%8A%9B"><span class="toc-number">1.3.1.</span> <span class="toc-text">1. 三次握手——确认双方收发能力</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-%E5%BA%8F%E5%88%97%E5%8F%B7%E5%92%8C%E7%A1%AE%E8%AE%A4%E5%8F%B7%E2%80%94%E2%80%94%E7%BB%99%E6%AF%8F%E4%B8%AA%E5%AD%97%E8%8A%82%E7%BC%96%E5%8F%B7"><span class="toc-number">1.3.2.</span> <span class="toc-text">2. 序列号和确认号——给每个字节编号</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-%E8%B6%85%E6%97%B6%E9%87%8D%E4%BC%A0%E2%80%94%E2%80%94%E5%85%9C%E5%BA%95%E4%BF%9D%E9%9A%9C"><span class="toc-number">1.3.3.</span> <span class="toc-text">3. 超时重传——兜底保障</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-%E5%BF%AB%E9%80%9F%E9%87%8D%E4%BC%A0%E2%80%94%E2%80%94%E4%B8%8D%E5%BF%85%E7%AD%89%E8%B6%85%E6%97%B6"><span class="toc-number">1.3.4.</span> <span class="toc-text">4. 快速重传——不必等超时</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-%E6%B5%81%E9%87%8F%E6%8E%A7%E5%88%B6%E2%80%94%E2%80%94%E4%BF%9D%E6%8A%A4%E6%8E%A5%E6%94%B6%E6%96%B9"><span class="toc-number">1.3.5.</span> <span class="toc-text">5. 流量控制——保护接收方</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-%E6%8B%A5%E5%A1%9E%E6%8E%A7%E5%88%B6%E2%80%94%E2%80%94%E4%BF%9D%E6%8A%A4%E7%BD%91%E7%BB%9C"><span class="toc-number">1.3.6.</span> <span class="toc-text">6. 拥塞控制——保护网络</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#7-%E5%9B%9B%E6%AC%A1%E6%8C%A5%E6%89%8B%E2%80%94%E2%80%94%E5%85%A8%E5%8F%8C%E5%B7%A5%E7%9A%84%E4%BC%98%E9%9B%85%E5%85%B3%E9%97%AD"><span class="toc-number">1.3.7.</span> <span class="toc-text">7. 四次挥手——全双工的优雅关闭</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#8-TCP-%E5%A4%B4%E8%A7%A3%E5%89%96%E2%80%94%E2%80%94%E6%AF%8F%E4%B8%80%E6%AE%B5%E9%83%BD%E6%9C%89%E7%94%A8%E9%80%94"><span class="toc-number">1.3.8.</span> <span class="toc-text">8. TCP 头解剖——每一段都有用途</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81UDP-%E7%9A%84%E4%B8%8D%E4%BD%9C%E4%B8%BA%EF%BC%8C%E6%98%AF%E4%B8%80%E7%A7%8D%E7%B2%BE%E5%AF%86%E7%9A%84%E7%AE%97%E8%AE%A1"><span class="toc-number">1.4.</span> <span class="toc-text">四、UDP 的不作为，是一种精密的算计</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81Socket%EF%BC%9A%E5%BA%94%E7%94%A8%E5%B1%82%E4%BC%B8%E5%90%91%E4%BC%A0%E8%BE%93%E5%B1%82%E7%9A%84%E9%82%A3%E5%8F%AA%E6%89%8B"><span class="toc-number">1.5.</span> <span class="toc-text">五、Socket：应用层伸向传输层的那只手</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81HTTP-%E4%B8%89%E4%BB%A3%E6%BC%94%E8%BF%9B%EF%BC%9A%E4%B8%80%E6%AC%A1%E5%AF%B9-TCP-%E7%9A%84%E9%80%90%E6%AD%A5%E9%80%83%E7%A6%BB"><span class="toc-number">1.6.</span> <span class="toc-text">六、HTTP 三代演进：一次对 TCP 的逐步逃离</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#HTTP-1-1-%E2%80%94-%E6%88%90%E4%B9%9F-TCP%EF%BC%8C%E5%9B%B0%E4%B9%9F-TCP"><span class="toc-number">1.6.1.</span> <span class="toc-text">HTTP&#x2F;1.1 — 成也 TCP，困也 TCP</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#HTTP-2-%E2%80%94-%E5%9C%A8-TCP-%E4%B9%8B%E4%B8%8A%E4%BF%AE%E5%A4%8D-HTTP-%E5%B1%82%E9%9D%A2%E7%9A%84%E9%98%9F%E5%A4%B4%E9%98%BB%E5%A1%9E"><span class="toc-number">1.6.2.</span> <span class="toc-text">HTTP&#x2F;2 — 在 TCP 之上修复 HTTP 层面的队头阻塞</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#HTTP-3-%E2%80%94-%E6%94%BE%E5%BC%83-TCP%EF%BC%8C%E6%8A%95%E5%A5%94-QUIC"><span class="toc-number">1.6.3.</span> <span class="toc-text">HTTP&#x2F;3 — 放弃 TCP，投奔 QUIC</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%83%E3%80%81API-%E4%B8%89%E7%A7%8D%E8%8C%83%E5%BC%8F%EF%BC%9A%E7%AB%99%E5%9C%A8-HTTP-%E8%82%A9%E8%86%80%E4%B8%8A%E7%9B%96%E6%88%BF%E5%AD%90"><span class="toc-number">1.7.</span> <span class="toc-text">七、API 三种范式：站在 HTTP 肩膀上盖房子</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#REST-%E2%80%94-HTTP-%E5%8D%B3%E6%8E%A5%E5%8F%A3"><span class="toc-number">1.7.1.</span> <span class="toc-text">REST — HTTP 即接口</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#GraphQL-%E2%80%94-HTTP-%E9%99%8D%E7%BA%A7%E4%B8%BA%E8%BF%90%E8%BE%93%E7%AE%A1%E9%81%93"><span class="toc-number">1.7.2.</span> <span class="toc-text">GraphQL — HTTP 降级为运输管道</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#gRPC-%E2%80%94-%E5%AF%B9-HTTP-2-%E7%9A%84%E9%AB%98%E7%BA%A7%E5%B0%81%E8%A3%85"><span class="toc-number">1.7.3.</span> <span class="toc-text">gRPC — 对 HTTP&#x2F;2 的高级封装</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AB%E3%80%81WebSocket%EF%BC%9A%E4%B8%80%E4%B8%AA%E7%89%B9%E5%88%AB%E7%9A%84%E7%89%B9%E4%BE%8B"><span class="toc-number">1.8.</span> <span class="toc-text">八、WebSocket：一个特别的特例</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B9%9D%E3%80%81%E4%BB%A5%E5%90%8E%E6%88%91%E6%80%8E%E4%B9%88%E5%88%A4%E6%96%AD%E4%B8%80%E4%B8%AA%E6%96%B0%E7%9A%84%E7%BD%91%E7%BB%9C%E5%8D%8F%E8%AE%AE"><span class="toc-number">1.9.</span> <span class="toc-text">九、以后我怎么判断一个新的网络协议</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%8F%82%E8%80%83%E6%96%87%E7%8C%AE"><span class="toc-number">1.10.</span> <span class="toc-text">参考文献</span></a></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/05/13/%E4%BB%8ESocket%E5%88%B0HTTP3-%E5%BA%94%E7%94%A8%E5%B1%82%E4%B8%8E%E4%BC%A0%E8%BE%93%E5%B1%82%E5%85%A8%E9%93%BE%E6%9D%A1%E6%A2%B3%E7%90%86/" title="从Socket到HTTP3-应用层与传输层全链条梳理">从Socket到HTTP3-应用层与传输层全链条梳理</a><time datetime="2026-05-13T09:47:13.000Z" title="发表于 2026-05-13 17:47:13">2026-05-13</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/05/13/%E5%A4%A7%E6%A8%A1%E5%9E%8B%E5%90%8E%E8%AE%AD%E7%BB%83%E5%88%B0%E5%BA%95%E5%9C%A8%E8%AE%AD%E4%BB%80%E4%B9%88/" title="大模型后训练到底在训什么">大模型后训练到底在训什么</a><time datetime="2026-05-13T09:29:38.000Z" title="发表于 2026-05-13 17:29:38">2026-05-13</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/05/13/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F%E8%BF%9B%E7%A8%8B%E7%BA%BF%E7%A8%8B%E5%8D%8F%E7%A8%8B%E7%9A%84%E6%9C%AC%E8%B4%A8%E5%8C%BA%E5%88%AB/" title="操作系统进程线程协程的本质区别">操作系统进程线程协程的本质区别</a><time datetime="2026-05-13T09:29:38.000Z" title="发表于 2026-05-13 17:29:38">2026-05-13</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/05/12/Agent%E8%AF%84%E6%B5%8B%E5%9F%BA%E7%BA%BF%E4%B8%8E%E5%9B%9E%E5%BD%92%E9%97%A8%E7%A6%81/" title="Agent评测基线与回归门禁">Agent评测基线与回归门禁</a><time datetime="2026-05-12T01:00:00.000Z" title="发表于 2026-05-12 09:00:00">2026-05-12</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/05/12/AgentRL%E4%B8%BA%E4%BB%80%E4%B9%88%E8%AE%AD%E7%BB%83Agent%E4%B8%8D%E6%98%AF%E6%8A%8ARLHF%E5%A5%97%E4%B8%8A%E5%8E%BB/" title="AgentRL为什么训练Agent不是把RLHF套上去">AgentRL为什么训练Agent不是把RLHF套上去</a><time datetime="2026-05-11T20:03:51.000Z" title="发表于 2026-05-12 04:03:51">2026-05-12</time></div></div></div></div></div></div></main><footer id="footer" style="background-image: url(/img/footer-bg.jpg);"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;YeeFayAI</span></div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.4"></script><script src="/js/main.js?v=5.5.4"></script><div class="js-pjax"></div><script>
+if (window.location.pathname === '/about/') {
+  const header = document.querySelector('#page-header');
+  if (header) {
+    const videoHtml = `
+      <div class="about-video-header">
+        <video autoplay muted loop playsinline>
+          <source src="/img/about-bg.mp4" type="video/mp4">
+        </video>
+        <div class="video-title">关于我</div>
+      </div>
+    `;
+    header.insertAdjacentHTML('afterend', videoHtml);
+  }
+}
+</script>
+<script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script><div id="local-search"><div class="search-dialog"><nav class="search-nav"><span class="search-dialog-title">搜索</span><i class="fas fa-spinner fa-pulse" id="loading-status" hidden="hidden"></i><button class="search-close-button"><i class="fas fa-times"></i></button></nav><div class="text-center" id="loading-database"><i class="fas fa-spinner fa-pulse"></i><span>  数据加载中</span></div><div class="local-search-input"><input placeholder="Search articles..." type="text"/></div><hr/><div id="local-search-results"></div><div class="ais-Pagination" id="local-search-pagination" style="display:none;"><ul class="ais-Pagination-list"></ul></div><div id="local-search-stats"></div></div><div id="search-mask"></div><script src="/js/search/local-search.js?v=5.5.4"></script></div></div></body></html>
