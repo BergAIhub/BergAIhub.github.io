@@ -1,0 +1,472 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>HTTP与实时通信协议全梳理 | YeeFayAI</title><meta name="author" content="YeeFayAI"><meta name="copyright" content="YeeFayAI"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#F2EDF7"><meta name="description" content="从一次请求到持久连接：HTTP、HTTPS、SSE、WebSocket 各自解决了什么问题 这篇文章把 HTTP、HTTPS、SSE、WebSocket 四个协议放在一起，从连接模型、数据流方向、协议开销三个维度拆开讲。读完你会清楚每个协议在网络栈里的位置、它们之间的演进关系、以及在实际场景中该选哪个。  一个前端页面为什么需要四种不同的通信方式打开一个现代 Web 应用，你的浏览器可能同时在做这">
+<meta property="og:type" content="article">
+<meta property="og:title" content="HTTP与实时通信协议全梳理">
+<meta property="og:url" content="https://yeefayai.github.io/2026/05/13/HTTP%E4%B8%8E%E5%AE%9E%E6%97%B6%E9%80%9A%E4%BF%A1%E5%8D%8F%E8%AE%AE%E5%85%A8%E6%A2%B3%E7%90%86/index.html">
+<meta property="og:site_name" content="YeeFayAI">
+<meta property="og:description" content="从一次请求到持久连接：HTTP、HTTPS、SSE、WebSocket 各自解决了什么问题 这篇文章把 HTTP、HTTPS、SSE、WebSocket 四个协议放在一起，从连接模型、数据流方向、协议开销三个维度拆开讲。读完你会清楚每个协议在网络栈里的位置、它们之间的演进关系、以及在实际场景中该选哪个。  一个前端页面为什么需要四种不同的通信方式打开一个现代 Web 应用，你的浏览器可能同时在做这">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://yeefayai.github.io/img/YeeFay.jpg">
+<meta property="article:published_time" content="2026-05-13T10:13:24.000Z">
+<meta property="article:modified_time" content="2026-05-13T10:13:24.996Z">
+<meta property="article:author" content="YeeFayAI">
+<meta property="article:tag" content="Agent开发,人工智能,AI助手,大语言模型">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://yeefayai.github.io/img/YeeFay.jpg"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "HTTP与实时通信协议全梳理",
+  "url": "https://yeefayai.github.io/2026/05/13/HTTP%E4%B8%8E%E5%AE%9E%E6%97%B6%E9%80%9A%E4%BF%A1%E5%8D%8F%E8%AE%AE%E5%85%A8%E6%A2%B3%E7%90%86/",
+  "image": "https://yeefayai.github.io/img/YeeFay.jpg",
+  "datePublished": "2026-05-13T10:13:24.000Z",
+  "dateModified": "2026-05-13T10:13:24.996Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "YeeFayAI",
+      "url": "https://yeefayai.github.io"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/YeeFay.jpg"><link rel="canonical" href="https://yeefayai.github.io/2026/05/13/HTTP%E4%B8%8E%E5%AE%9E%E6%97%B6%E9%80%9A%E4%BF%A1%E5%8D%8F%E8%AE%AE%E5%85%A8%E6%A2%B3%E7%90%86/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.5.4"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#3d2b1f')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#F2EDF7')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: {"path":"/search.xml","preload":false,"top_n_per_article":1,"unescape":false,"pagination":{"enable":false,"hitsPerPage":8},"languages":{"hits_empty":"未找到符合您查询的内容：${query}","hits_stats":"共找到 ${hits} 篇文章"}},
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":false},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'null',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'HTTP与实时通信协议全梳理',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><style>
+/* UI style tweak */
+#nav .menus_item a {
+  font-size: 18px !important;
+}
+/* UI style tweak */
+#search-button .site-page {
+  font-size: 18px !important;
+}
+/* UI style tweak */
+.card-announcement .item-headline i {
+  color: #7B6B8A !important;
+}
+/* UI style tweak */
+.about-video-header {
+  position: relative;
+  width: 100%;
+  height: 60vh;
+  overflow: hidden;
+  margin-top: -60px;
+  margin-bottom: 20px;
+}
+.about-video-header video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.about-video-header .video-title {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: #fff;
+  font-size: 32px;
+  font-weight: 700;
+  text-shadow: 2px 2px 8px rgba(0,0,0,0.5);
+  z-index: 10;
+}
+.about-video-header::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.3);
+}
+</style>
+<meta name="generator" content="Hexo 8.1.1"></head><body><div class="bg-animation" id="web_bg" style="background-color: #F8F5FA;"></div><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="/img/YeeFay.jpg" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 主页</span></a></div><div class="menus_item"><a class="site-page" href="/categories/agent-notes/"><i class="fa-fw fas fa-robot"></i><span> Agent学习笔记</span></a></div><div class="menus_item"><a class="site-page" href="/categories/portfolio/"><i class="fa-fw fas fa-star"></i><span> 作品集</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-user"></i><span> 关于我</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg" id="page-header"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">YeeFayAI</span></a><a class="nav-page-title" href="/"><span class="site-name">HTTP与实时通信协议全梳理</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 主页</span></a></div><div class="menus_item"><a class="site-page" href="/categories/agent-notes/"><i class="fa-fw fas fa-robot"></i><span> Agent学习笔记</span></a></div><div class="menus_item"><a class="site-page" href="/categories/portfolio/"><i class="fa-fw fas fa-star"></i><span> 作品集</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-user"></i><span> 关于我</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">HTTP与实时通信协议全梳理</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-05-13T10:13:24.000Z" title="发表于 2026-05-13 18:13:24">2026-05-13</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-05-13T10:13:24.996Z" title="更新于 2026-05-13 18:13:24">2026-05-13</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/agent-notes/">Agent学习笔记</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><h1 id="从一次请求到持久连接：HTTP、HTTPS、SSE、WebSocket-各自解决了什么问题"><a href="#从一次请求到持久连接：HTTP、HTTPS、SSE、WebSocket-各自解决了什么问题" class="headerlink" title="从一次请求到持久连接：HTTP、HTTPS、SSE、WebSocket 各自解决了什么问题"></a>从一次请求到持久连接：HTTP、HTTPS、SSE、WebSocket 各自解决了什么问题</h1><blockquote>
+<p>这篇文章把 HTTP、HTTPS、SSE、WebSocket 四个协议放在一起，从连接模型、数据流方向、协议开销三个维度拆开讲。读完你会清楚每个协议在网络栈里的位置、它们之间的演进关系、以及在实际场景中该选哪个。</p>
+</blockquote>
+<h2 id="一个前端页面为什么需要四种不同的通信方式"><a href="#一个前端页面为什么需要四种不同的通信方式" class="headerlink" title="一个前端页面为什么需要四种不同的通信方式"></a>一个前端页面为什么需要四种不同的通信方式</h2><p>打开一个现代 Web 应用，你的浏览器可能同时在做这些事：</p>
+<ul>
+<li>用 HTTP GET 拉取页面 HTML、CSS、JS 和图片</li>
+<li>通过 HTTPS 向后端 API 发送带认证信息的请求</li>
+<li>用 SSE 接收 AI 模型逐 token 生成的回答（ChatGPT 的打字机效果）</li>
+<li>用 WebSocket 维持一个在线协作文档的双向实时同步</li>
+</ul>
+<p>这四种通信方式不是互相替代的关系。HTTP 管”怎么请求和响应”，HTTPS 管”怎么加密”，SSE 管”服务器怎么持续推送”，WebSocket 管”双方怎么随时互发消息”。</p>
+<p>搞混它们的人，通常是没分清两件事：<strong>连接的生命周期</strong>和<strong>数据流的方向</strong>。</p>
+<h2 id="HTTP-的本质：一问一答的文本协议"><a href="#HTTP-的本质：一问一答的文本协议" class="headerlink" title="HTTP 的本质：一问一答的文本协议"></a>HTTP 的本质：一问一答的文本协议</h2><p>HTTP（HyperText Transfer Protocol）是应用层协议，跑在 TCP 之上。核心模型很简单：客户端发一个请求，服务器回一个响应，完事。</p>
+<h3 id="HTTP-1-1-的连接模型"><a href="#HTTP-1-1-的连接模型" class="headerlink" title="HTTP&#x2F;1.1 的连接模型"></a>HTTP&#x2F;1.1 的连接模型</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">客户端                          服务器</span><br><span class="line">  |--- GET /index.html ----------&gt;|</span><br><span class="line">  |&lt;-- 200 OK + HTML body --------|</span><br><span class="line">  |--- GET /style.css -----------&gt;|</span><br><span class="line">  |&lt;-- 200 OK + CSS body ---------|</span><br><span class="line">  |--- GET /app.js --------------&gt;|</span><br><span class="line">  |&lt;-- 200 OK + JS body ----------|</span><br></pre></td></tr></table></figure>
+
+<p>HTTP&#x2F;1.0 每次请求都要新建 TCP 连接（三次握手），用完就关。HTTP&#x2F;1.1 引入了 <code>Connection: keep-alive</code>，允许在同一个 TCP 连接上串行发送多个请求。但关键限制是：<strong>队头阻塞（Head-of-Line Blocking）</strong>——前一个请求的响应没回来，后面的请求只能排队等。</p>
+<p>一个请求报文的结构：</p>
+<figure class="highlight http"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">GET</span> <span class="string">/api/users</span> <span class="meta">HTTP/1.1</span></span><br><span class="line"><span class="attribute">Host</span><span class="punctuation">: </span>example.com</span><br><span class="line"><span class="attribute">Accept</span><span class="punctuation">: </span>application/json</span><br><span class="line"><span class="attribute">Authorization</span><span class="punctuation">: </span>Bearer eyJhbGciOiJIUzI1NiJ9...</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>一个响应报文的结构：</p>
+<figure class="highlight http"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">HTTP/1.1</span> <span class="number">200</span> OK</span><br><span class="line"><span class="attribute">Content-Type</span><span class="punctuation">: </span>application/json</span><br><span class="line"><span class="attribute">Content-Length</span><span class="punctuation">: </span>128</span><br><span class="line"></span><br><span class="line"><span class="language-prolog">&#123;<span class="string">&quot;users&quot;</span>: [&#123;<span class="string">&quot;id&quot;</span>: <span class="number">1</span>, <span class="string">&quot;name&quot;</span>: <span class="string">&quot;Alice&quot;</span>&#125;]&#125;</span></span><br></pre></td></tr></table></figure>
+
+<p>HTTP 是无状态的——每个请求独立，服务器不记得上一个请求是谁发的。Cookie、Session、Token 都是在这个无状态协议之上叠加的状态管理机制。</p>
+<h3 id="HTTP-2：二进制帧-多路复用"><a href="#HTTP-2：二进制帧-多路复用" class="headerlink" title="HTTP&#x2F;2：二进制帧 + 多路复用"></a>HTTP&#x2F;2：二进制帧 + 多路复用</h3><p>HTTP&#x2F;2（RFC 9113，2022 年正式标准化）解决了 HTTP&#x2F;1.1 的队头阻塞问题。核心改进：</p>
+<p><strong>二进制分帧</strong>。HTTP&#x2F;1.1 是纯文本协议（人类可读），HTTP&#x2F;2 把所有通信拆成二进制帧（Frame），每个帧属于一个流（Stream）。</p>
+<p><strong>多路复用</strong>。同一个 TCP 连接上可以同时跑多个流，每个流是一个独立的请求-响应对。流之间互不阻塞——流 1 的响应还没回来，流 2 的响应可以先到。</p>
+<p><strong>头部压缩（HPACK）</strong>。HTTP 头部有大量重复内容（Host、Cookie、User-Agent），HPACK 用静态表 + 动态表 + 霍夫曼编码压缩头部，减少传输量。</p>
+<p><strong>服务器推送</strong>。服务器可以主动推送客户端还没请求但可能需要的资源（比如 HTML 里引用的 CSS）。但实践中这个特性用得不多，Chrome 已经移除了对 HTTP&#x2F;2 Server Push 的支持。</p>
+<p>HTTP&#x2F;2 的局限：它仍然跑在 TCP 上。TCP 层的丢包会阻塞整个连接上的所有流（TCP 层的队头阻塞）。</p>
+<h3 id="HTTP-3：QUIC-UDP"><a href="#HTTP-3：QUIC-UDP" class="headerlink" title="HTTP&#x2F;3：QUIC + UDP"></a>HTTP&#x2F;3：QUIC + UDP</h3><p>HTTP&#x2F;3（RFC 9114，2022）把传输层从 TCP 换成了 QUIC（跑在 UDP 上）。QUIC 的每个流独立处理丢包重传，一个流丢包不影响其他流。同时 QUIC 内置了 TLS 1.3，握手只需要 1-RTT（首次连接）或 0-RTT（恢复连接）。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">HTTP/1.1: TCP 三次握手 + TLS 握手 = 2-3 RTT 才能发数据</span><br><span class="line">HTTP/2:   TCP 三次握手 + TLS 握手 = 2-3 RTT（同上，只是复用更好）</span><br><span class="line">HTTP/3:   QUIC 握手（内含 TLS）= 1 RTT（首次）/ 0 RTT（恢复）</span><br></pre></td></tr></table></figure>
+
+<h2 id="HTTPS-不是一个新协议，是-HTTP-TLS-的组合"><a href="#HTTPS-不是一个新协议，是-HTTP-TLS-的组合" class="headerlink" title="HTTPS 不是一个新协议，是 HTTP + TLS 的组合"></a>HTTPS 不是一个新协议，是 HTTP + TLS 的组合</h2><p>HTTPS &#x3D; HTTP over TLS。它不改变 HTTP 的语义（请求方法、状态码、头部都一样），只是在 HTTP 和 TCP 之间插入了一层 TLS 加密。</p>
+<h3 id="TLS-1-3-握手过程"><a href="#TLS-1-3-握手过程" class="headerlink" title="TLS 1.3 握手过程"></a>TLS 1.3 握手过程</h3><p>TLS 1.3（RFC 8446）相比 TLS 1.2 减少了一个 RTT 的握手延迟：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">客户端                                    服务器</span><br><span class="line">  |--- ClientHello -----------------------&gt;|</span><br><span class="line">  |    (支持的密码套件、密钥共享参数)        |</span><br><span class="line">  |                                        |</span><br><span class="line">  |&lt;-- ServerHello + 证书 + Finished ------|</span><br><span class="line">  |    (选定密码套件、服务器密钥共享、       |</span><br><span class="line">  |     证书链、握手完成确认)               |</span><br><span class="line">  |                                        |</span><br><span class="line">  |--- Finished ---------------------------&gt;|</span><br><span class="line">  |    (客户端握手完成确认)                 |</span><br><span class="line">  |                                        |</span><br><span class="line">  |=== 加密的应用数据开始传输 ===============|</span><br></pre></td></tr></table></figure>
+
+<p>TLS 1.3 只需要 1-RTT 就能完成握手并开始传输加密数据（TLS 1.2 需要 2-RTT）。</p>
+<h3 id="证书验证做了什么"><a href="#证书验证做了什么" class="headerlink" title="证书验证做了什么"></a>证书验证做了什么</h3><ol>
+<li>服务器发送证书链（服务器证书 → 中间 CA 证书 → 根 CA 证书）。</li>
+<li>客户端用本地信任的根 CA 公钥验证证书链的签名。</li>
+<li>检查证书是否过期、域名是否匹配、是否被吊销（OCSP&#x2F;CRL）。</li>
+<li>验证通过后，用证书中的公钥参与密钥交换，生成对称加密的会话密钥。</li>
+</ol>
+<p>之后所有 HTTP 数据都用这个会话密钥做对称加密（AES-GCM 或 ChaCha20-Poly1305），性能开销很小。</p>
+<h3 id="HTTPS-保护了什么，没保护什么"><a href="#HTTPS-保护了什么，没保护什么" class="headerlink" title="HTTPS 保护了什么，没保护什么"></a>HTTPS 保护了什么，没保护什么</h3><p>保护了：</p>
+<ul>
+<li>请求和响应的内容（包括 URL 路径、头部、body）</li>
+<li>数据完整性（篡改会被检测到）</li>
+<li>服务器身份认证（防止连到假服务器）</li>
+</ul>
+<p>没保护：</p>
+<ul>
+<li>目标 IP 地址（网络层可见）</li>
+<li>DNS 查询（除非用 DoH&#x2F;DoT）</li>
+<li>连接的元数据（时间、数据量、连接频率）</li>
+<li>SNI 字段中的域名（TLS 握手时明文发送，除非用 ECH）</li>
+</ul>
+<h2 id="SSE：HTTP-长连接上的服务器单向推送"><a href="#SSE：HTTP-长连接上的服务器单向推送" class="headerlink" title="SSE：HTTP 长连接上的服务器单向推送"></a>SSE：HTTP 长连接上的服务器单向推送</h2><p>Server-Sent Events（SSE）是 HTML5 标准的一部分，它复用 HTTP 协议实现服务器向客户端的持续推送。</p>
+<h3 id="SSE-的连接模型"><a href="#SSE-的连接模型" class="headerlink" title="SSE 的连接模型"></a>SSE 的连接模型</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">客户端                              服务器</span><br><span class="line">  |--- GET /stream -----------------&gt;|</span><br><span class="line">  |    Accept: text/event-stream     |</span><br><span class="line">  |                                  |</span><br><span class="line">  |&lt;-- HTTP 200 --------------------|</span><br><span class="line">  |    Content-Type: text/event-stream</span><br><span class="line">  |    Transfer-Encoding: chunked    |</span><br><span class="line">  |                                  |</span><br><span class="line">  |&lt;-- data: &#123;&quot;token&quot;: &quot;Hello&quot;&#125;\n\n -|</span><br><span class="line">  |&lt;-- data: &#123;&quot;token&quot;: &quot; world&quot;&#125;\n\n |</span><br><span class="line">  |&lt;-- data: &#123;&quot;token&quot;: &quot;!&quot;&#125;\n\n -----|</span><br><span class="line">  |&lt;-- ... 持续推送 ... -------------|</span><br></pre></td></tr></table></figure>
+
+<p>SSE 本质上就是一个<strong>不关闭的 HTTP 响应</strong>。服务器发送 <code>Content-Type: text/event-stream</code>，然后持续往响应体里写数据，连接一直保持打开。</p>
+<h3 id="事件流格式"><a href="#事件流格式" class="headerlink" title="事件流格式"></a>事件流格式</h3><p>SSE 的数据格式极其简单，纯文本：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">event: message</span><br><span class="line">data: &#123;&quot;token&quot;: &quot;Hello&quot;&#125;</span><br><span class="line">id: 1</span><br><span class="line"></span><br><span class="line">event: message</span><br><span class="line">data: &#123;&quot;token&quot;: &quot; world&quot;&#125;</span><br><span class="line">id: 2</span><br><span class="line"></span><br><span class="line">event: done</span><br><span class="line">data: [DONE]</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>每个事件由若干字段组成，字段之间用换行分隔，事件之间用空行（<code>\n\n</code>）分隔：</p>
+<ul>
+<li><code>data:</code> — 事件数据（可以多行）</li>
+<li><code>event:</code> — 事件类型（可选，默认是 <code>message</code>）</li>
+<li><code>id:</code> — 事件 ID（用于断线重连时告诉服务器从哪里继续）</li>
+<li><code>retry:</code> — 重连间隔（毫秒）</li>
+</ul>
+<h3 id="浏览器端的-EventSource-API"><a href="#浏览器端的-EventSource-API" class="headerlink" title="浏览器端的 EventSource API"></a>浏览器端的 EventSource API</h3><figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">const</span> source = <span class="keyword">new</span> <span class="title class_">EventSource</span>(<span class="string">&#x27;/api/stream&#x27;</span>);</span><br><span class="line"></span><br><span class="line">source.<span class="property">onmessage</span> = <span class="function">(<span class="params">event</span>) =&gt;</span> &#123;</span><br><span class="line">  <span class="keyword">const</span> data = <span class="title class_">JSON</span>.<span class="title function_">parse</span>(event.<span class="property">data</span>);</span><br><span class="line">  <span class="variable language_">console</span>.<span class="title function_">log</span>(data.<span class="property">token</span>);</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line">source.<span class="property">onerror</span> = <span class="function">(<span class="params">event</span>) =&gt;</span> &#123;</span><br><span class="line">  <span class="comment">// 浏览器会自动重连，带上 Last-Event-ID 头</span></span><br><span class="line">  <span class="variable language_">console</span>.<span class="title function_">log</span>(<span class="string">&#x27;连接断开，自动重连中...&#x27;</span>);</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p>EventSource 的内置特性：</p>
+<ul>
+<li><strong>自动重连</strong>。连接断开后浏览器自动重新发起请求，并在请求头中带上 <code>Last-Event-ID</code>，服务器可以据此恢复推送。</li>
+<li><strong>事件类型分发</strong>。可以用 <code>addEventListener(&#39;custom-event&#39;, handler)</code> 监听特定类型的事件。</li>
+</ul>
+<h3 id="为什么-AI-流式输出都用-SSE"><a href="#为什么-AI-流式输出都用-SSE" class="headerlink" title="为什么 AI 流式输出都用 SSE"></a>为什么 AI 流式输出都用 SSE</h3><p>OpenAI、Anthropic、Google 的流式 API 全部选择了 SSE 而不是 WebSocket。原因：</p>
+<ol>
+<li><strong>单向推送完美匹配</strong>。AI 生成是服务器单向输出 token，客户端只需要接收。</li>
+<li><strong>HTTP 原生</strong>。SSE 走标准 HTTP，能过 CDN、负载均衡器、反向代理，不需要特殊配置。</li>
+<li><strong>自动重连</strong>。网络抖动时 EventSource 自动恢复，配合 <code>id</code> 字段可以断点续传。</li>
+<li><strong>简单</strong>。不需要维护连接状态，服务端就是往 response 里写文本。</li>
+</ol>
+<h2 id="WebSocket：升级到全双工的独立协议"><a href="#WebSocket：升级到全双工的独立协议" class="headerlink" title="WebSocket：升级到全双工的独立协议"></a>WebSocket：升级到全双工的独立协议</h2><p>WebSocket（RFC 6455，2011）是一个独立的应用层协议，它借用 HTTP 完成握手，然后切换到自己的二进制帧协议。</p>
+<h3 id="握手过程：从-HTTP-升级"><a href="#握手过程：从-HTTP-升级" class="headerlink" title="握手过程：从 HTTP 升级"></a>握手过程：从 HTTP 升级</h3><figure class="highlight http"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">GET</span> <span class="string">/chat</span> <span class="meta">HTTP/1.1</span></span><br><span class="line"><span class="attribute">Host</span><span class="punctuation">: </span>example.com</span><br><span class="line"><span class="attribute">Upgrade</span><span class="punctuation">: </span>websocket</span><br><span class="line"><span class="attribute">Connection</span><span class="punctuation">: </span>Upgrade</span><br><span class="line"><span class="attribute">Sec-WebSocket-Key</span><span class="punctuation">: </span>dGhlIHNhbXBsZSBub25jZQ==</span><br><span class="line"><span class="attribute">Sec-WebSocket-Version</span><span class="punctuation">: </span>13</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight http"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">HTTP/1.1</span> <span class="number">101</span> Switching Protocols</span><br><span class="line"><span class="attribute">Upgrade</span><span class="punctuation">: </span>websocket</span><br><span class="line"><span class="attribute">Connection</span><span class="punctuation">: </span>Upgrade</span><br><span class="line"><span class="attribute">Sec-WebSocket-Accept</span><span class="punctuation">: </span>s3pPLMBiTxaQ9kYGzzhZRbK+xOo=</span><br></pre></td></tr></table></figure>
+
+<p>握手完成后，这个 TCP 连接不再是 HTTP 连接了——它变成了 WebSocket 连接，使用完全不同的帧格式。</p>
+<p><code>Sec-WebSocket-Key</code> 和 <code>Sec-WebSocket-Accept</code> 的作用不是加密，而是防止缓存代理误把 WebSocket 流量当成普通 HTTP 缓存。服务器把客户端发来的 Key 拼接一个固定 GUID，做 SHA-1 哈希后 Base64 编码返回，证明它确实理解 WebSocket 协议。</p>
+<h3 id="帧格式"><a href="#帧格式" class="headerlink" title="帧格式"></a>帧格式</h3><p>WebSocket 的数据以帧（Frame）为单位传输，帧头最小只有 2 字节：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"> 0                   1                   2                   3</span><br><span class="line"> 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1</span><br><span class="line">+-+-+-+-+-------+-+-------------+-------------------------------+</span><br><span class="line">|F|R|R|R| opcode|M| Payload len |    Extended payload length    |</span><br><span class="line">|I|S|S|S|  (4)  |A|     (7)     |           (16/64)             |</span><br><span class="line">|N|V|V|V|       |S|             |   (if payload len==126/127)   |</span><br><span class="line">| |1|2|3|       |K|             |                               |</span><br><span class="line">+-+-+-+-+-------+-+-------------+-------------------------------+</span><br><span class="line">|     Masking-key (if MASK=1)   |          Payload Data         |</span><br><span class="line">+-------------------------------+-------------------------------+</span><br></pre></td></tr></table></figure>
+
+<p>关键字段：</p>
+<ul>
+<li><strong>FIN</strong>：是否是消息的最后一帧（大消息可以分片）</li>
+<li><strong>opcode</strong>：帧类型<ul>
+<li><code>0x1</code> &#x3D; 文本帧</li>
+<li><code>0x2</code> &#x3D; 二进制帧</li>
+<li><code>0x8</code> &#x3D; 关闭连接</li>
+<li><code>0x9</code> &#x3D; Ping</li>
+<li><code>0xA</code> &#x3D; Pong</li>
+</ul>
+</li>
+<li><strong>MASK</strong>：客户端发给服务器的帧必须掩码（防止缓存投毒攻击），服务器发给客户端的不需要</li>
+<li><strong>Payload len</strong>：7 位表示 0-125 字节，126 表示后续 2 字节是实际长度，127 表示后续 8 字节是实际长度</li>
+</ul>
+<p>对比 HTTP 的文本头部（几百字节起步），WebSocket 帧头只有 2-14 字节，这就是为什么它适合高频小消息场景。</p>
+<h3 id="Ping-Pong-心跳"><a href="#Ping-Pong-心跳" class="headerlink" title="Ping&#x2F;Pong 心跳"></a>Ping&#x2F;Pong 心跳</h3><p>WebSocket 内置了心跳机制。任何一方都可以发送 Ping 帧，对方必须回复 Pong 帧。这用来：</p>
+<ul>
+<li>检测连接是否还活着</li>
+<li>防止中间代理因为空闲超时关闭连接</li>
+</ul>
+<h2 id="把四个协议放在一起看：连接、方向、开销"><a href="#把四个协议放在一起看：连接、方向、开销" class="headerlink" title="把四个协议放在一起看：连接、方向、开销"></a>把四个协议放在一起看：连接、方向、开销</h2><p><img src="https://raw.githubusercontent.com/YeeFayAI/Image/main/protocol-layer-stack.png" alt="HTTP&#x2F;HTTPS&#x2F;SSE&#x2F;WebSocket 协议栈分层图"></p>
+<table>
+<thead>
+<tr>
+<th>维度</th>
+<th>HTTP</th>
+<th>HTTPS</th>
+<th>SSE</th>
+<th>WebSocket</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>协议层</td>
+<td>应用层</td>
+<td>应用层（HTTP + TLS）</td>
+<td>应用层（HTTP 的特殊用法）</td>
+<td>应用层（独立协议）</td>
+</tr>
+<tr>
+<td>传输层</td>
+<td>TCP（HTTP&#x2F;3 用 QUIC&#x2F;UDP）</td>
+<td>TCP + TLS</td>
+<td>TCP</td>
+<td>TCP</td>
+</tr>
+<tr>
+<td>连接模型</td>
+<td>请求-响应，短连接或 keep-alive</td>
+<td>同 HTTP</td>
+<td>长连接，不关闭响应</td>
+<td>长连接，握手后持久保持</td>
+</tr>
+<tr>
+<td>数据方向</td>
+<td>客户端发起，服务器响应</td>
+<td>同 HTTP</td>
+<td>服务器 → 客户端（单向）</td>
+<td>双向（全双工）</td>
+</tr>
+<tr>
+<td>每条消息开销</td>
+<td>HTTP 头部（几百字节~几 KB）</td>
+<td>同 HTTP + TLS 记录层（~20-40 字节）</td>
+<td>极小（<code>data: ...\n\n</code>）</td>
+<td>极小（2-14 字节帧头）</td>
+</tr>
+<tr>
+<td>浏览器并发限制</td>
+<td>同域 6 个 TCP 连接（HTTP&#x2F;1.1）</td>
+<td>同左</td>
+<td>同域 6 个（占用 HTTP 连接池）</td>
+<td>无限制（独立于 HTTP 连接池）</td>
+</tr>
+<tr>
+<td>自动重连</td>
+<td>无</td>
+<td>无</td>
+<td>有（EventSource 内置）</td>
+<td>无（需要自己实现）</td>
+</tr>
+<tr>
+<td>代理&#x2F;CDN 友好度</td>
+<td>完全兼容</td>
+<td>完全兼容</td>
+<td>大部分兼容（需要禁用缓冲）</td>
+<td>需要代理支持 Upgrade</td>
+</tr>
+</tbody></table>
+<h2 id="抛开协议名字，它们其实在回答”数据怎么流动”"><a href="#抛开协议名字，它们其实在回答”数据怎么流动”" class="headerlink" title="抛开协议名字，它们其实在回答”数据怎么流动”"></a>抛开协议名字，它们其实在回答”数据怎么流动”</h2><p>用第一性原理来看，网络通信只有三个基本问题：</p>
+<p><strong>1. 谁先说话？</strong></p>
+<ul>
+<li>HTTP&#x2F;HTTPS：永远是客户端先说（发请求），服务器只能被动回答。</li>
+<li>SSE：客户端先发一个请求打开通道，之后服务器持续说话。</li>
+<li>WebSocket：握手后双方随时可以说话，没有主从之分。</li>
+</ul>
+<p><strong>2. 说完一句话连接还在不在？</strong></p>
+<ul>
+<li>HTTP&#x2F;1.0：说完就断。</li>
+<li>HTTP&#x2F;1.1 keep-alive：说完不断，但要排队等。</li>
+<li>HTTP&#x2F;2：说完不断，可以同时说多句。</li>
+<li>SSE：服务器一直在说，直到主动停止或连接断开。</li>
+<li>WebSocket：连接一直在，直到任何一方主动关闭。</li>
+</ul>
+<p><strong>3. 每句话的信封有多大？</strong></p>
+<ul>
+<li>HTTP：每句话都要带完整的头部（Host、Cookie、Content-Type…），几百字节起步。</li>
+<li>SSE：只需要 <code>data: 内容\n\n</code>，十几字节。</li>
+<li>WebSocket：2-14 字节的帧头。</li>
+</ul>
+<p>这三个问题的答案组合，决定了每个协议适合什么场景。</p>
+<h2 id="实际选型：什么场景用什么"><a href="#实际选型：什么场景用什么" class="headerlink" title="实际选型：什么场景用什么"></a>实际选型：什么场景用什么</h2><p><strong>普通 API 调用</strong> → HTTP&#x2F;HTTPS</p>
+<p>请求-响应模型，无状态，RESTful。绝大多数 Web 应用的主力通信方式。</p>
+<p><strong>AI 流式输出、实时通知、股票行情推送</strong> → SSE</p>
+<p>服务器单向推送，客户端只接收。SSE 的优势是简单、HTTP 原生、自动重连、CDN 友好。ChatGPT、Claude、Gemini 的流式 API 全部用 SSE。</p>
+<p><strong>在线聊天、协作编辑、多人游戏</strong> → WebSocket</p>
+<p>双方都需要随时发消息，且消息频率高、延迟敏感。WebSocket 的帧开销最小，全双工，适合高频双向通信。</p>
+<p><strong>文件上传&#x2F;下载</strong> → HTTP&#x2F;HTTPS</p>
+<p>大块数据传输，HTTP 的 chunked transfer 和 range request 已经很成熟。</p>
+<h3 id="一个容易犯的错误"><a href="#一个容易犯的错误" class="headerlink" title="一个容易犯的错误"></a>一个容易犯的错误</h3><p>很多人看到”实时”就想用 WebSocket，但实际上大部分”实时”场景是<strong>服务器单向推送</strong>——通知、消息提醒、数据更新、AI 输出。这些场景用 SSE 就够了，比 WebSocket 简单得多：</p>
+<ul>
+<li>不需要维护连接状态</li>
+<li>不需要处理双向消息的序列化</li>
+<li>不需要实现心跳和重连逻辑（EventSource 内置）</li>
+<li>能过 CDN 和标准 HTTP 基础设施</li>
+</ul>
+<p>只有当客户端也需要高频向服务器发送数据（不是偶尔发一个 HTTP 请求，而是持续的双向数据流）时，WebSocket 才是必要的。</p>
+<h2 id="以后我判断用哪个协议，就看这两步"><a href="#以后我判断用哪个协议，就看这两步" class="headerlink" title="以后我判断用哪个协议，就看这两步"></a>以后我判断用哪个协议，就看这两步</h2><p><strong>第一步：数据流方向。</strong></p>
+<ul>
+<li>客户端请求 → 服务器响应（一问一答）→ HTTP&#x2F;HTTPS</li>
+<li>服务器持续推送 → 客户端接收 → SSE</li>
+<li>双方随时互发 → WebSocket</li>
+</ul>
+<p><strong>第二步：确认约束条件。</strong></p>
+<ul>
+<li>需要加密 → 加 TLS（HTTPS &#x2F; wss:&#x2F;&#x2F;）</li>
+<li>需要过 CDN &#x2F; 负载均衡 → 优先 SSE（HTTP 原生）</li>
+<li>消息频率极高（每秒几十上百条）+ 双向 → WebSocket</li>
+<li>需要自动重连和断点续传 → SSE 内置支持</li>
+</ul>
+<p>别为了”看起来高级”选 WebSocket。多数场景 SSE 更简单、更可靠、更好运维。WebSocket 是给真正需要全双工的场景准备的——用对了是利器，用错了是负担。</p>
+<h2 id="References"><a href="#References" class="headerlink" title="References"></a>References</h2><ol>
+<li>RFC 9113 - HTTP&#x2F;2. <a target="_blank" rel="noopener" href="https://www.rfc-editor.org/rfc/rfc9113">https://www.rfc-editor.org/rfc/rfc9113</a></li>
+<li>RFC 9114 - HTTP&#x2F;3. <a target="_blank" rel="noopener" href="https://www.rfc-editor.org/rfc/rfc9114">https://www.rfc-editor.org/rfc/rfc9114</a></li>
+<li>RFC 6455 - The WebSocket Protocol. <a target="_blank" rel="noopener" href="https://www.rfc-editor.org/rfc/rfc6455">https://www.rfc-editor.org/rfc/rfc6455</a></li>
+<li>RFC 8446 - TLS 1.3. <a target="_blank" rel="noopener" href="https://www.rfc-editor.org/rfc/rfc8446">https://www.rfc-editor.org/rfc/rfc8446</a></li>
+<li>MDN - EventSource API. <a target="_blank" rel="noopener" href="https://developer.mozilla.org/en-US/docs/Web/API/EventSource">https://developer.mozilla.org/en-US/docs/Web/API/EventSource</a></li>
+<li>High Performance Browser Networking - Server-Sent Events. <a target="_blank" rel="noopener" href="https://hpbn.co/server-sent-events-sse/">https://hpbn.co/server-sent-events-sse/</a></li>
+<li>Cloudflare - What happens in a TLS handshake. <a target="_blank" rel="noopener" href="https://www.cloudflare.com/learning/ssl/what-happens-in-a-tls-handshake/">https://www.cloudflare.com/learning/ssl/what-happens-in-a-tls-handshake/</a></li>
+<li>WebSocket.org - WebSocket Protocol Guide. <a target="_blank" rel="noopener" href="https://websocket.org/guides/websocket-protocol/">https://websocket.org/guides/websocket-protocol/</a></li>
+<li>The Streaming Infrastructure Behind Real-Time Agent UIs. <a target="_blank" rel="noopener" href="https://tianpan.co/blog/2026-04-10-streaming-real-time-agent-uis-sse-backpressure-reconnection">https://tianpan.co/blog/2026-04-10-streaming-real-time-agent-uis-sse-backpressure-reconnection</a></li>
+</ol>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="https://yeefayai.github.io">YeeFayAI</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://yeefayai.github.io/2026/05/13/HTTP%E4%B8%8E%E5%AE%9E%E6%97%B6%E9%80%9A%E4%BF%A1%E5%8D%8F%E8%AE%AE%E5%85%A8%E6%A2%B3%E7%90%86/">https://yeefayai.github.io/2026/05/13/HTTP%E4%B8%8E%E5%AE%9E%E6%97%B6%E9%80%9A%E4%BF%A1%E5%8D%8F%E8%AE%AE%E5%85%A8%E6%A2%B3%E7%90%86/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://yeefayai.github.io" target="_blank">YeeFayAI</a>！</span></div></div><div class="tag_share"><div class="post-share"><div class="social-share" data-image="/img/YeeFay.jpg" data-sites="facebook,x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related full-width" href="/2026/05/13/%E4%BB%8ESocket%E5%88%B0HTTP3-%E5%BA%94%E7%94%A8%E5%B1%82%E4%B8%8E%E4%BC%A0%E8%BE%93%E5%B1%82%E5%85%A8%E9%93%BE%E6%9D%A1%E6%A2%B3%E7%90%86/" title="从Socket到HTTP3-应用层与传输层全链条梳理"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">从Socket到HTTP3-应用层与传输层全链条梳理</div></div><div class="info-2"><div class="info-item-1">从 socket 到 HTTP&#x2F;3：应用层与传输层的全链条梳理 这篇文章用一个统一的视角串起计算机网络中”上面怎么调用”和”下面怎么送达”两件事——从操作系统里的 socket 五元组出发，经过 TCP 的字节流保序和 UDP 的裸包直传，往上看到 HTTP 三代演进、REST&#x2F;GraphQL&#x2F;gRPC 三种 API 范式，以及 WebSocket 如何借 HTTP 握手抢占一条 TCP 长连接。读完你会有一个可用以判断新技术的思维框架。   一、先把”层”这件事说清楚讲应用层和传输层，绕不开一个问题：为什么要有层？ OSI 七层模型是教科书标准，TCP&#x2F;IP 四层模型是互联网事实标准。它们的关系不是竞争，而是”设计图纸”和”实际工程”的关系： 123456789OSI 七层 (理论)              TCP/IP 四层 (工程)           这一层在干什么─────────────────────────   ─────────────────────────   ──────────────────7. 应用层 (Ap...</div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="/img/YeeFay.jpg" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">YeeFayAI</div><div class="author-info-description">Agent is all you need</div><a id="card-info-btn" target="_blank" rel="noopener" href="https://github.com/YeeFayAI"><i class="fab fa-github"></i><span>Follow Me</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/YeeFayAI" target="_blank" title="Github"><i class="fab fa-github" style="color: #24292e;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">Hello, I am YeeFay. Welcome to my blog!</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E4%BB%8E%E4%B8%80%E6%AC%A1%E8%AF%B7%E6%B1%82%E5%88%B0%E6%8C%81%E4%B9%85%E8%BF%9E%E6%8E%A5%EF%BC%9AHTTP%E3%80%81HTTPS%E3%80%81SSE%E3%80%81WebSocket-%E5%90%84%E8%87%AA%E8%A7%A3%E5%86%B3%E4%BA%86%E4%BB%80%E4%B9%88%E9%97%AE%E9%A2%98"><span class="toc-number">1.</span> <span class="toc-text">从一次请求到持久连接：HTTP、HTTPS、SSE、WebSocket 各自解决了什么问题</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E4%B8%AA%E5%89%8D%E7%AB%AF%E9%A1%B5%E9%9D%A2%E4%B8%BA%E4%BB%80%E4%B9%88%E9%9C%80%E8%A6%81%E5%9B%9B%E7%A7%8D%E4%B8%8D%E5%90%8C%E7%9A%84%E9%80%9A%E4%BF%A1%E6%96%B9%E5%BC%8F"><span class="toc-number">1.1.</span> <span class="toc-text">一个前端页面为什么需要四种不同的通信方式</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#HTTP-%E7%9A%84%E6%9C%AC%E8%B4%A8%EF%BC%9A%E4%B8%80%E9%97%AE%E4%B8%80%E7%AD%94%E7%9A%84%E6%96%87%E6%9C%AC%E5%8D%8F%E8%AE%AE"><span class="toc-number">1.2.</span> <span class="toc-text">HTTP 的本质：一问一答的文本协议</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#HTTP-1-1-%E7%9A%84%E8%BF%9E%E6%8E%A5%E6%A8%A1%E5%9E%8B"><span class="toc-number">1.2.1.</span> <span class="toc-text">HTTP&#x2F;1.1 的连接模型</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#HTTP-2%EF%BC%9A%E4%BA%8C%E8%BF%9B%E5%88%B6%E5%B8%A7-%E5%A4%9A%E8%B7%AF%E5%A4%8D%E7%94%A8"><span class="toc-number">1.2.2.</span> <span class="toc-text">HTTP&#x2F;2：二进制帧 + 多路复用</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#HTTP-3%EF%BC%9AQUIC-UDP"><span class="toc-number">1.2.3.</span> <span class="toc-text">HTTP&#x2F;3：QUIC + UDP</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#HTTPS-%E4%B8%8D%E6%98%AF%E4%B8%80%E4%B8%AA%E6%96%B0%E5%8D%8F%E8%AE%AE%EF%BC%8C%E6%98%AF-HTTP-TLS-%E7%9A%84%E7%BB%84%E5%90%88"><span class="toc-number">1.3.</span> <span class="toc-text">HTTPS 不是一个新协议，是 HTTP + TLS 的组合</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#TLS-1-3-%E6%8F%A1%E6%89%8B%E8%BF%87%E7%A8%8B"><span class="toc-number">1.3.1.</span> <span class="toc-text">TLS 1.3 握手过程</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%AF%81%E4%B9%A6%E9%AA%8C%E8%AF%81%E5%81%9A%E4%BA%86%E4%BB%80%E4%B9%88"><span class="toc-number">1.3.2.</span> <span class="toc-text">证书验证做了什么</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#HTTPS-%E4%BF%9D%E6%8A%A4%E4%BA%86%E4%BB%80%E4%B9%88%EF%BC%8C%E6%B2%A1%E4%BF%9D%E6%8A%A4%E4%BB%80%E4%B9%88"><span class="toc-number">1.3.3.</span> <span class="toc-text">HTTPS 保护了什么，没保护什么</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#SSE%EF%BC%9AHTTP-%E9%95%BF%E8%BF%9E%E6%8E%A5%E4%B8%8A%E7%9A%84%E6%9C%8D%E5%8A%A1%E5%99%A8%E5%8D%95%E5%90%91%E6%8E%A8%E9%80%81"><span class="toc-number">1.4.</span> <span class="toc-text">SSE：HTTP 长连接上的服务器单向推送</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#SSE-%E7%9A%84%E8%BF%9E%E6%8E%A5%E6%A8%A1%E5%9E%8B"><span class="toc-number">1.4.1.</span> <span class="toc-text">SSE 的连接模型</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%BA%8B%E4%BB%B6%E6%B5%81%E6%A0%BC%E5%BC%8F"><span class="toc-number">1.4.2.</span> <span class="toc-text">事件流格式</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%B5%8F%E8%A7%88%E5%99%A8%E7%AB%AF%E7%9A%84-EventSource-API"><span class="toc-number">1.4.3.</span> <span class="toc-text">浏览器端的 EventSource API</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%BA%E4%BB%80%E4%B9%88-AI-%E6%B5%81%E5%BC%8F%E8%BE%93%E5%87%BA%E9%83%BD%E7%94%A8-SSE"><span class="toc-number">1.4.4.</span> <span class="toc-text">为什么 AI 流式输出都用 SSE</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#WebSocket%EF%BC%9A%E5%8D%87%E7%BA%A7%E5%88%B0%E5%85%A8%E5%8F%8C%E5%B7%A5%E7%9A%84%E7%8B%AC%E7%AB%8B%E5%8D%8F%E8%AE%AE"><span class="toc-number">1.5.</span> <span class="toc-text">WebSocket：升级到全双工的独立协议</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%8F%A1%E6%89%8B%E8%BF%87%E7%A8%8B%EF%BC%9A%E4%BB%8E-HTTP-%E5%8D%87%E7%BA%A7"><span class="toc-number">1.5.1.</span> <span class="toc-text">握手过程：从 HTTP 升级</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%B8%A7%E6%A0%BC%E5%BC%8F"><span class="toc-number">1.5.2.</span> <span class="toc-text">帧格式</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Ping-Pong-%E5%BF%83%E8%B7%B3"><span class="toc-number">1.5.3.</span> <span class="toc-text">Ping&#x2F;Pong 心跳</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%8A%8A%E5%9B%9B%E4%B8%AA%E5%8D%8F%E8%AE%AE%E6%94%BE%E5%9C%A8%E4%B8%80%E8%B5%B7%E7%9C%8B%EF%BC%9A%E8%BF%9E%E6%8E%A5%E3%80%81%E6%96%B9%E5%90%91%E3%80%81%E5%BC%80%E9%94%80"><span class="toc-number">1.6.</span> <span class="toc-text">把四个协议放在一起看：连接、方向、开销</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%8A%9B%E5%BC%80%E5%8D%8F%E8%AE%AE%E5%90%8D%E5%AD%97%EF%BC%8C%E5%AE%83%E4%BB%AC%E5%85%B6%E5%AE%9E%E5%9C%A8%E5%9B%9E%E7%AD%94%E2%80%9D%E6%95%B0%E6%8D%AE%E6%80%8E%E4%B9%88%E6%B5%81%E5%8A%A8%E2%80%9D"><span class="toc-number">1.7.</span> <span class="toc-text">抛开协议名字，它们其实在回答”数据怎么流动”</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%AE%9E%E9%99%85%E9%80%89%E5%9E%8B%EF%BC%9A%E4%BB%80%E4%B9%88%E5%9C%BA%E6%99%AF%E7%94%A8%E4%BB%80%E4%B9%88"><span class="toc-number">1.8.</span> <span class="toc-text">实际选型：什么场景用什么</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%80%E4%B8%AA%E5%AE%B9%E6%98%93%E7%8A%AF%E7%9A%84%E9%94%99%E8%AF%AF"><span class="toc-number">1.8.1.</span> <span class="toc-text">一个容易犯的错误</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BB%A5%E5%90%8E%E6%88%91%E5%88%A4%E6%96%AD%E7%94%A8%E5%93%AA%E4%B8%AA%E5%8D%8F%E8%AE%AE%EF%BC%8C%E5%B0%B1%E7%9C%8B%E8%BF%99%E4%B8%A4%E6%AD%A5"><span class="toc-number">1.9.</span> <span class="toc-text">以后我判断用哪个协议，就看这两步</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#References"><span class="toc-number">1.10.</span> <span class="toc-text">References</span></a></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/05/13/HTTP%E4%B8%8E%E5%AE%9E%E6%97%B6%E9%80%9A%E4%BF%A1%E5%8D%8F%E8%AE%AE%E5%85%A8%E6%A2%B3%E7%90%86/" title="HTTP与实时通信协议全梳理">HTTP与实时通信协议全梳理</a><time datetime="2026-05-13T10:13:24.000Z" title="发表于 2026-05-13 18:13:24">2026-05-13</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/05/13/%E4%BB%8ESocket%E5%88%B0HTTP3-%E5%BA%94%E7%94%A8%E5%B1%82%E4%B8%8E%E4%BC%A0%E8%BE%93%E5%B1%82%E5%85%A8%E9%93%BE%E6%9D%A1%E6%A2%B3%E7%90%86/" title="从Socket到HTTP3-应用层与传输层全链条梳理">从Socket到HTTP3-应用层与传输层全链条梳理</a><time datetime="2026-05-13T09:47:13.000Z" title="发表于 2026-05-13 17:47:13">2026-05-13</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/05/13/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F%E8%BF%9B%E7%A8%8B%E7%BA%BF%E7%A8%8B%E5%8D%8F%E7%A8%8B%E7%9A%84%E6%9C%AC%E8%B4%A8%E5%8C%BA%E5%88%AB/" title="操作系统进程线程协程的本质区别">操作系统进程线程协程的本质区别</a><time datetime="2026-05-13T09:29:38.000Z" title="发表于 2026-05-13 17:29:38">2026-05-13</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/05/13/%E5%A4%A7%E6%A8%A1%E5%9E%8B%E5%90%8E%E8%AE%AD%E7%BB%83%E5%88%B0%E5%BA%95%E5%9C%A8%E8%AE%AD%E4%BB%80%E4%B9%88/" title="大模型后训练到底在训什么">大模型后训练到底在训什么</a><time datetime="2026-05-13T09:29:38.000Z" title="发表于 2026-05-13 17:29:38">2026-05-13</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/05/12/Agent%E8%AF%84%E6%B5%8B%E5%9F%BA%E7%BA%BF%E4%B8%8E%E5%9B%9E%E5%BD%92%E9%97%A8%E7%A6%81/" title="Agent评测基线与回归门禁">Agent评测基线与回归门禁</a><time datetime="2026-05-12T01:00:00.000Z" title="发表于 2026-05-12 09:00:00">2026-05-12</time></div></div></div></div></div></div></main><footer id="footer" style="background-image: url(/img/footer-bg.jpg);"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;YeeFayAI</span></div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.4"></script><script src="/js/main.js?v=5.5.4"></script><div class="js-pjax"></div><script>
+if (window.location.pathname === '/about/') {
+  const header = document.querySelector('#page-header');
+  if (header) {
+    const videoHtml = `
+      <div class="about-video-header">
+        <video autoplay muted loop playsinline>
+          <source src="/img/about-bg.mp4" type="video/mp4">
+        </video>
+        <div class="video-title">关于我</div>
+      </div>
+    `;
+    header.insertAdjacentHTML('afterend', videoHtml);
+  }
+}
+</script>
+<script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script><div id="local-search"><div class="search-dialog"><nav class="search-nav"><span class="search-dialog-title">搜索</span><i class="fas fa-spinner fa-pulse" id="loading-status" hidden="hidden"></i><button class="search-close-button"><i class="fas fa-times"></i></button></nav><div class="text-center" id="loading-database"><i class="fas fa-spinner fa-pulse"></i><span>  数据加载中</span></div><div class="local-search-input"><input placeholder="Search articles..." type="text"/></div><hr/><div id="local-search-results"></div><div class="ais-Pagination" id="local-search-pagination" style="display:none;"><ul class="ais-Pagination-list"></ul></div><div id="local-search-stats"></div></div><div id="search-mask"></div><script src="/js/search/local-search.js?v=5.5.4"></script></div></div></body></html>
