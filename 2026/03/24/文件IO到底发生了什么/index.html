@@ -1,0 +1,333 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>文件IO到底发生了什么 | YeeFayAI</title><meta name="author" content="YeeFayAI"><meta name="copyright" content="YeeFayAI"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#F2EDF7"><meta name="description" content="文件 I&#x2F;O 到底发生了什么：从 write() 到磁盘的一路 你调用 write()，它返回了成功。但数据真的到磁盘了吗？大概率没有。这篇文章从调用栈往下走，一直走到硬件，讲清楚操作系统文件 I&#x2F;O 在每一层做了什么。  你写下的每个字节，大概率还在内存里写一个最简单的 C 程序： 123int fd &#x3D; open(&quot;&#x2F;tmp&#x2F;data&quot;, O_WRONL">
+<meta property="og:type" content="article">
+<meta property="og:title" content="文件IO到底发生了什么">
+<meta property="og:url" content="https://yeefayai.github.io/2026/03/24/%E6%96%87%E4%BB%B6IO%E5%88%B0%E5%BA%95%E5%8F%91%E7%94%9F%E4%BA%86%E4%BB%80%E4%B9%88/index.html">
+<meta property="og:site_name" content="YeeFayAI">
+<meta property="og:description" content="文件 I&#x2F;O 到底发生了什么：从 write() 到磁盘的一路 你调用 write()，它返回了成功。但数据真的到磁盘了吗？大概率没有。这篇文章从调用栈往下走，一直走到硬件，讲清楚操作系统文件 I&#x2F;O 在每一层做了什么。  你写下的每个字节，大概率还在内存里写一个最简单的 C 程序： 123int fd &#x3D; open(&quot;&#x2F;tmp&#x2F;data&quot;, O_WRONL">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://yeefayai.github.io/img/YeeFay.jpg">
+<meta property="article:published_time" content="2026-03-24T01:00:00.000Z">
+<meta property="article:modified_time" content="2026-05-14T22:01:20.052Z">
+<meta property="article:author" content="YeeFayAI">
+<meta property="article:tag" content="Agent开发,人工智能,AI助手,大语言模型">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://yeefayai.github.io/img/YeeFay.jpg"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "文件IO到底发生了什么",
+  "url": "https://yeefayai.github.io/2026/03/24/%E6%96%87%E4%BB%B6IO%E5%88%B0%E5%BA%95%E5%8F%91%E7%94%9F%E4%BA%86%E4%BB%80%E4%B9%88/",
+  "image": "https://yeefayai.github.io/img/YeeFay.jpg",
+  "datePublished": "2026-03-24T01:00:00.000Z",
+  "dateModified": "2026-05-14T22:01:20.052Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "YeeFayAI",
+      "url": "https://yeefayai.github.io"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/YeeFay.jpg"><link rel="canonical" href="https://yeefayai.github.io/2026/03/24/%E6%96%87%E4%BB%B6IO%E5%88%B0%E5%BA%95%E5%8F%91%E7%94%9F%E4%BA%86%E4%BB%80%E4%B9%88/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.5.4"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#3d2b1f')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#F2EDF7')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: {"path":"/search.xml","preload":false,"top_n_per_article":1,"unescape":false,"pagination":{"enable":false,"hitsPerPage":8},"languages":{"hits_empty":"未找到符合您查询的内容：${query}","hits_stats":"共找到 ${hits} 篇文章"}},
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":false},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'null',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: '文件IO到底发生了什么',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><style>
+/* UI style tweak */
+#nav .menus_item a {
+  font-size: 18px !important;
+}
+/* UI style tweak */
+#search-button .site-page {
+  font-size: 18px !important;
+}
+/* UI style tweak */
+.card-announcement .item-headline i {
+  color: #7B6B8A !important;
+}
+/* UI style tweak */
+.about-video-header {
+  position: relative;
+  width: 100%;
+  height: 60vh;
+  overflow: hidden;
+  margin-top: -60px;
+  margin-bottom: 20px;
+}
+.about-video-header video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.about-video-header .video-title {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: #fff;
+  font-size: 32px;
+  font-weight: 700;
+  text-shadow: 2px 2px 8px rgba(0,0,0,0.5);
+  z-index: 10;
+}
+.about-video-header::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.3);
+}
+</style>
+<meta name="generator" content="Hexo 8.1.1"></head><body><div class="bg-animation" id="web_bg" style="background-color: #F8F5FA;"></div><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="/img/YeeFay.jpg" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 主页</span></a></div><div class="menus_item"><a class="site-page" href="/categories/agent-notes/"><i class="fa-fw fas fa-robot"></i><span> Agent学习笔记</span></a></div><div class="menus_item"><a class="site-page" href="/categories/portfolio/"><i class="fa-fw fas fa-star"></i><span> 作品集</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-user"></i><span> 关于我</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg" id="page-header"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">YeeFayAI</span></a><a class="nav-page-title" href="/"><span class="site-name">文件IO到底发生了什么</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 主页</span></a></div><div class="menus_item"><a class="site-page" href="/categories/agent-notes/"><i class="fa-fw fas fa-robot"></i><span> Agent学习笔记</span></a></div><div class="menus_item"><a class="site-page" href="/categories/portfolio/"><i class="fa-fw fas fa-star"></i><span> 作品集</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-user"></i><span> 关于我</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">文件IO到底发生了什么</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-03-24T01:00:00.000Z" title="发表于 2026-03-24 09:00:00">2026-03-24</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-05-14T22:01:20.052Z" title="更新于 2026-05-15 06:01:20">2026-05-15</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/agent-notes/">Agent学习笔记</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><h1 id="文件-I-O-到底发生了什么：从-write-到磁盘的一路"><a href="#文件-I-O-到底发生了什么：从-write-到磁盘的一路" class="headerlink" title="文件 I&#x2F;O 到底发生了什么：从 write() 到磁盘的一路"></a>文件 I&#x2F;O 到底发生了什么：从 write() 到磁盘的一路</h1><blockquote>
+<p>你调用 <code>write()</code>，它返回了成功。但数据真的到磁盘了吗？大概率没有。这篇文章从调用栈往下走，一直走到硬件，讲清楚操作系统文件 I&#x2F;O 在每一层做了什么。</p>
+</blockquote>
+<h2 id="你写下的每个字节，大概率还在内存里"><a href="#你写下的每个字节，大概率还在内存里" class="headerlink" title="你写下的每个字节，大概率还在内存里"></a>你写下的每个字节，大概率还在内存里</h2><p>写一个最简单的 C 程序：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">int</span> fd = open(<span class="string">&quot;/tmp/data&quot;</span>, O_WRONLY | O_CREAT, <span class="number">0644</span>);</span><br><span class="line">write(fd, buf, <span class="number">4096</span>);</span><br><span class="line">close(fd);</span><br></pre></td></tr></table></figure>
+
+<p><code>write()</code> 返回 4096，看起来写完了。但此时如果拔电源，这 4096 字节大概率就丢了。它们只是被拷进了内核的 Page Cache，标记为”脏页”，还没落到盘上。</p>
+<p>这不是 bug。这是操作系统故意为之的设计。理解这个设计为什么存在、每一层在做什么、以及你什么时候需要绕开它，就是这篇文章要讲的事。</p>
+<h2 id="一层一层往下走：从-VFS-到磁盘驱动"><a href="#一层一层往下走：从-VFS-到磁盘驱动" class="headerlink" title="一层一层往下走：从 VFS 到磁盘驱动"></a>一层一层往下走：从 VFS 到磁盘驱动</h2><h3 id="VFS：一个统一入口，对接几十种文件系统"><a href="#VFS：一个统一入口，对接几十种文件系统" class="headerlink" title="VFS：一个统一入口，对接几十种文件系统"></a>VFS：一个统一入口，对接几十种文件系统</h3><p>VFS（Virtual File System）是内核里的一层抽象。它定义了四个核心结构：</p>
+<ul>
+<li><strong>superblock</strong>：描述一个已挂载的文件系统（块大小、设备信息、文件系统类型）。</li>
+<li><strong>inode</strong>：代表一个文件，存权限、大小、时间戳、数据块指针。不存文件名。</li>
+<li><strong>dentry</strong>：文件名到 inode 的映射。这是为什么 <code>rename()</code> 在同一文件系统内是 O(1)：只改 dentry，不动 inode 和数据。</li>
+<li><strong>file</strong>：进程打开文件时创建，持有当前读写偏移。</li>
+</ul>
+<p>你写 <code>open(&quot;/home/user/data.txt&quot;, ...)</code> 时，内核做”路径行走”（path walking）：<code>/</code> → <code>home</code> → <code>user</code> → <code>data.txt</code>，每一步先查 dentry 缓存（dcache），未命中才去磁盘读目录项。</p>
+<p>ext4、XFS、NFS、tmpfs 都实现同一套 VFS 接口，上层不需要知道下面跑的是什么文件系统。</p>
+<h3 id="Page-Cache：整条-I-O-栈的性能心脏"><a href="#Page-Cache：整条-I-O-栈的性能心脏" class="headerlink" title="Page Cache：整条 I&#x2F;O 栈的性能心脏"></a>Page Cache：整条 I&#x2F;O 栈的性能心脏</h3><p>Page Cache 是内核里以 4KB 页面为单位缓存文件数据的地方。</p>
+<p><strong>读路径</strong>，</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">用户调 read(fd, buf, 4096)</span><br><span class="line">        │</span><br><span class="line">        ▼</span><br><span class="line">   查 Page Cache</span><br><span class="line">    ┌───┴───┐</span><br><span class="line">  命中      未命中</span><br><span class="line">    │         │</span><br><span class="line">    ▼         ▼</span><br><span class="line"> 从内存    从磁盘 DMA 读到 Page Cache</span><br><span class="line"> 直接拷贝   再拷贝给用户</span><br><span class="line"> (~100ns)  (~10ms，差 10 万倍)</span><br></pre></td></tr></table></figure>
+
+<p><strong>写路径默认是写回（write-back）</strong>：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">用户调 write(fd, buf, 4096)</span><br><span class="line">        │</span><br><span class="line">        ▼</span><br><span class="line">  在 Page Cache 中定位/分配页面</span><br><span class="line">  copy_from_user() → 页面</span><br><span class="line">  标记为脏页</span><br><span class="line">  write() 立即返回 ✅       ← 数据还没到磁盘！</span><br><span class="line">        │</span><br><span class="line">   （稍后，由后台线程触发）</span><br><span class="line">        ▼</span><br><span class="line">  flusher 线程: writepages()</span><br><span class="line">  → submit_bio()</span><br><span class="line">  → 磁盘</span><br><span class="line">  → 清除脏标记</span><br></pre></td></tr></table></figure>
+
+<p>脏页什么时候真正写回？五个触发条件：</p>
+<ul>
+<li>脏页数量超过 <code>dirty_ratio</code> 阈值</li>
+<li>脏页驻留时间超过 <code>dirty_expire_centisecs</code></li>
+<li>内存紧张需要回收页面</li>
+<li>显式调用 <code>fsync()</code> &#x2F; <code>sync()</code></li>
+<li>文件关闭</li>
+</ul>
+<p>这就是为什么数据库的 <code>fsync()</code> 调用那么关键：在 <code>fsync()</code> 返回之前，数据是靠不住的。</p>
+<h3 id="Block-层和-IO-调度器"><a href="#Block-层和-IO-调度器" class="headerlink" title="Block 层和 IO 调度器"></a>Block 层和 IO 调度器</h3><p>Page Cache 之下是 Block 层。BIO（Block I&#x2F;O）请求在这里被合并、排序、派发。用 blk-mq（多队列）架构后，每个 CPU 核心有自己的提交队列，减少了锁竞争。</p>
+<p>IO 调度器的选择取决于硬件：</p>
+<table>
+<thead>
+<tr>
+<th>调度器</th>
+<th>适用场景</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>none&#x2F;noop</td>
+<td>NVMe SSD，不需要排序，FIFO 即可</td>
+</tr>
+<tr>
+<td>mq-deadline</td>
+<td>数据库 + HDD，按 deadline 排序防饥饿</td>
+</tr>
+<tr>
+<td>bfq</td>
+<td>桌面交互，按进程公平分配带宽</td>
+</tr>
+<tr>
+<td>kyber</td>
+<td>低延迟设备，基于延迟反馈动态调整队列深度</td>
+</tr>
+</tbody></table>
+<h2 id="缓冲-I-O、直接-I-O、同步-I-O：三件经常被搞混的事"><a href="#缓冲-I-O、直接-I-O、同步-I-O：三件经常被搞混的事" class="headerlink" title="缓冲 I&#x2F;O、直接 I&#x2F;O、同步 I&#x2F;O：三件经常被搞混的事"></a>缓冲 I&#x2F;O、直接 I&#x2F;O、同步 I&#x2F;O：三件经常被搞混的事</h2><p>这三组概念正交，但经常一起出现，混在一起说很容易搞错。</p>
+<ul>
+<li><strong>缓冲 I&#x2F;O（Buffered）</strong>：走 Page Cache。默认模式。</li>
+<li><strong>直接 I&#x2F;O（Direct，<code>O_DIRECT</code>）</strong>：绕过 Page Cache，用户缓冲区和块设备直接对接 DMA。</li>
+<li><strong>同步 I&#x2F;O（<code>O_SYNC</code>）</strong>：走 Page Cache 但等价于 write-through，每次 write 必须等磁盘确认才返回。</li>
+</ul>
+<p>数据库喜欢 <code>O_DIRECT</code>：它们自己在用户态管理 buffer pool，再用一次 Page Cache 就是白白浪费内存和拷贝开销。代价是必须自己处理对齐（通常是 4KB 边界和扇区大小整数倍），而且失去了内核预读和 writeback 合并的好处。</p>
+<h2 id="零拷贝：目标是让-CPU-不用当搬运工"><a href="#零拷贝：目标是让-CPU-不用当搬运工" class="headerlink" title="零拷贝：目标是让 CPU 不用当搬运工"></a>零拷贝：目标是让 CPU 不用当搬运工</h2><p>如果只是把文件数据发到网络，传统 <code>read()</code> + <code>write()</code> 的路径非常浪费：四次上下文切换、两次 CPU 参与的数据拷贝（内核和用户空间各一次）。数据根本没被用户态程序加工过，只是搬运，但 CPU 在搬这 4096 字节时就不能干别的。</p>
+<p><strong>sendfile()</strong> 把这件事收到内核里做：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sendfile(sock_fd, file_fd, &amp;offset, count);</span><br></pre></td></tr></table></figure>
+
+<p>数据路径变成：磁盘 →DMA→ Page Cache →DMA Gather→ 网卡。如果网卡支持 scatter-gather，CPU 拷贝次数是 <strong>0</strong>。Kafka 发消息用的就是这个。</p>
+<p><strong>splice()</strong> 更通用：在两个文件描述符之间通过管道在内核里直接移动页面引用，不拷贝数据本身。<code>sendfile</code> 只能文件→socket，<code>splice</code> 可以任意 fd↔pipe↔任意 fd。</p>
+<p>选择零拷贝技术时记住一个教训：小于 4KB 的 payload，页引用计数开销可能比拷贝数据还大。</p>
+<h2 id="io-uring：把系统调用本身也省了"><a href="#io-uring：把系统调用本身也省了" class="headerlink" title="io_uring：把系统调用本身也省了"></a>io_uring：把系统调用本身也省了</h2><p>Linux 5.1 引入的 io_uring 改变了异步 I&#x2F;O 的游戏规则。它用一对用户态和内核态共享的环形缓冲区（SQ 提交队列 + CQ 完成队列）来传递 I&#x2F;O 请求：</p>
+<ul>
+<li>用户态往 SQ 里写 SQE（描述一个 read&#x2F;write&#x2F;send&#x2F;recv 操作）</li>
+<li>内核处理后往 CQ 里写 CQE（完成结果）</li>
+<li>启用了 SQPOLL 模式后，内核线程持续轮询 SQ，用户态连 <code>io_uring_enter()</code> 都不需要调，零系统调用</li>
+</ul>
+<p>4KB 随机读的实测数据（单 NVMe，队列深度 128）：</p>
+<ul>
+<li>传统 read&#x2F;write：基线</li>
+<li>libaio：~430K IOPS</li>
+<li>io_uring 默认模式：~500K IOPS</li>
+<li>io_uring + SQPOLL：~770K IOPS（接近 SPDK 用户态驱动的 ~950K）</li>
+</ul>
+<p>io_uring 的代价是安全性。它支持 60 多种操作类型，攻击面很大。Google 安全团队在 2022 年发现 60% 的内核漏洞和 io_uring 有关。所以 Android、ChromeOS、Docker 默认容器都禁用了它。</p>
+<h2 id="抛开术语，文件-I-O-本质上是在管理三样东西"><a href="#抛开术语，文件-I-O-本质上是在管理三样东西" class="headerlink" title="抛开术语，文件 I&#x2F;O 本质上是在管理三样东西"></a>抛开术语，文件 I&#x2F;O 本质上是在管理三样东西</h2><p><strong>数据</strong>（数据本身在哪里）、<strong>位置</strong>（数据在文件中的偏移和磁盘上的物理位置之间的映射）、<strong>时机</strong>（数据什么时候从缓存刷到持久存储）。</p>
+<p>Page Cache 解决的是时机：用延迟写换取吞吐。Direct I&#x2F;O 放弃了这个优化，换取数据位置的完全控制权。零拷贝解决的是数据的搬运路径：让数据在内核里直接流转，不经过用户态。io_uring 解决的是时机的粒度：把单次系统调用变成批量异步提交。</p>
+<h2 id="以后我会先看它到底缓冲在哪一层"><a href="#以后我会先看它到底缓冲在哪一层" class="headerlink" title="以后我会先看它到底缓冲在哪一层"></a>以后我会先看它到底缓冲在哪一层</h2><p>以后再看到一个存储系统说自己”高性能 I&#x2F;O”，我会先问三个问题：</p>
+<ol>
+<li>它走 Page Cache 还是 Direct I&#x2F;O？如果走 Direct，它自己的缓存策略是什么？</li>
+<li>它有没有调 <code>fsync()</code>？什么时候调？调完真的等了吗？</li>
+<li>它的 I&#x2F;O 模式是同步、异步、还是 io_uring？队列深度多少？</li>
+</ol>
+<p>这三个问题的答案基本决定了它的性能上限和崩溃安全性。</p>
+<h2 id="References"><a href="#References" class="headerlink" title="References"></a>References</h2><ul>
+<li><a target="_blank" rel="noopener" href="https://blog.csdn.net/xiaolingting/article/details/145497783">Linux内核IO栈全景分析</a></li>
+<li><a target="_blank" rel="noopener" href="https://blog.csdn.net/kk1kk2kk3kk4/article/details/153937104">Linux存储软件栈剖析</a></li>
+<li><a target="_blank" rel="noopener" href="https://www.yuque.com/fcant/linux/hxl97v61yis0u5y0">图解 Linux 文件系统：从 open() 到落盘</a></li>
+<li><a target="_blank" rel="noopener" href="https://arxiv.org/html/2512.04859v1">io_uring for High-Performance DBMSs</a> — Jasny et al., 2025</li>
+<li><a target="_blank" rel="noopener" href="https://cloud.tencent.cn/developer/article/2093898">Linux内核零拷贝技术详解</a></li>
+<li><a target="_blank" rel="noopener" href="https://developer.baidu.com/article/detail.html?id=3816189">io_uring 异步IO框架实践</a></li>
+<li><a target="_blank" rel="noopener" href="https://zhuanlan.zhihu.com/p/443820555">Linux 块IO流程与IO调度器</a></li>
+<li><a target="_blank" rel="noopener" href="https://github.com/0voice/linux_kernel_wiki/blob/main/%E6%96%87%E7%AB%A0/%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F/Linux%20IO%20%E4%B9%8B%20%E5%9D%97IO%E6%B5%81%E7%A8%8B%E4%B8%8EIO%E8%B0%83%E5%BA%A6%E5%99%A8.md">Linux IO 之 块IO流程与IO调度器</a></li>
+<li><a target="_blank" rel="noopener" href="https://c959c.blog.csdn.net/article/details/121951309">Linux I&#x2F;O 系统详解</a></li>
+</ul>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="https://yeefayai.github.io">YeeFayAI</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://yeefayai.github.io/2026/03/24/%E6%96%87%E4%BB%B6IO%E5%88%B0%E5%BA%95%E5%8F%91%E7%94%9F%E4%BA%86%E4%BB%80%E4%B9%88/">https://yeefayai.github.io/2026/03/24/%E6%96%87%E4%BB%B6IO%E5%88%B0%E5%BA%95%E5%8F%91%E7%94%9F%E4%BA%86%E4%BB%80%E4%B9%88/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://yeefayai.github.io" target="_blank">YeeFayAI</a>！</span></div></div><div class="tag_share"><div class="post-share"><div class="social-share" data-image="/img/YeeFay.jpg" data-sites="facebook,x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/2026/03/25/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F%E8%BF%9B%E7%A8%8B%E7%BA%BF%E7%A8%8B%E5%8D%8F%E7%A8%8B%E7%9A%84%E6%9C%AC%E8%B4%A8%E5%8C%BA%E5%88%AB/" title="操作系统进程线程协程的本质区别"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">操作系统进程线程协程的本质区别</div></div><div class="info-2"><div class="info-item-1">进程、线程、协程：一次讲清楚它们到底在争什么 这篇文章从操作系统的视角出发，把进程、线程、协程三个概念拆到底层实现层面来讲。读完你会明白它们各自拥有什么资源、切换时付出什么代价、以及为什么现代语言运行时要在内核线程之上再造一层调度。  为什么这三个词总是一起出现却总是讲不清学操作系统的时候，教材会告诉你：进程是资源分配的基本单位，线程是调度的基本单位。然后你去写 Go，发现 goroutine 既不是进程也不是传统线程；去写 Python，发现 asyncio 的协程跑在单线程里却能并发处理上千连接。 混乱的根源在于：这三个概念不在同一个抽象层。进程和线程是操作系统内核提供的抽象，协程是用户态运行时提供的抽象。它们解决的问题不同，付出的代价不同，能做到的事情也不同。 把它们放在一起比较，必须先搞清楚每一层到底管了什么。 Linux 内核眼里只有 task_struct在 Linux 内核的实现里，根本没有”进程”和”线程”两种不同的数据结构。内核只有一种东西：task_struct。每一个可调度的执行单元，不管你在用户空间叫它进程还是线程，在内核里都是一个 task_struct...</div></div></div></a><a class="pagination-related" href="/2026/03/23/%E6%96%87%E4%BB%B6%E7%BC%96%E7%A0%81%E4%B8%8E%E7%A8%8B%E5%BA%8F%E6%89%A7%E8%A1%8C%E5%8E%9F%E7%90%86/" title="文件编码与程序执行原理"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">文件编码与程序执行原理</div></div><div class="info-2"><div class="info-item-1">文件编码与程序执行：从乱码问题理解底层原理 主要内容：从 Windows CMD 执行 UTF-8 编码的 BAT 文件乱码问题出发，深入探讨文件编码、编译器与解释器的区别，以及程序执行的底层原理。  一切的起点：一个乱码的 BAT 文件我在 VS Code 里写了一个简单的 BAT 文件，内容就是几行中文输出。但在 CMD 里执行时，中文全部变成了乱码。为什么？ 这个看似简单的问题，让我一路挖到了文件编码、编译器原理、程序执行流程等底层知识。 文件编码：字节与字符的映射规则什么是编码？文件在硬盘上存储的本质是一串字节。编码就是字节和字符的映射规则。 12你看到的：你好硬盘实际：E4 BD A0 E5 A5 BD（UTF-8 编码）  同样的字节，用不同的编码解读，会得到不同的字符。这就是乱码的根源。 UTF-8 vs GBK这是两种不同的编码标准：    对比项 UTF-8 GBK    英文字符 1 字节 1 字节   中文字符 3 字节 2 字节   支持范围 全球所有语言 仅中文   国际化 标准编码 仅中国使用   关键点：英文部分两者完全相同，区别只在中文等多字节字符...</div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="/img/YeeFay.jpg" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">YeeFayAI</div><div class="author-info-description">Agent is all you need</div><a id="card-info-btn" target="_blank" rel="noopener" href="https://github.com/YeeFayAI"><i class="fab fa-github"></i><span>Follow Me</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/YeeFayAI" target="_blank" title="Github"><i class="fab fa-github" style="color: #24292e;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">Hello, I am YeeFay. Welcome to my blog!</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E6%96%87%E4%BB%B6-I-O-%E5%88%B0%E5%BA%95%E5%8F%91%E7%94%9F%E4%BA%86%E4%BB%80%E4%B9%88%EF%BC%9A%E4%BB%8E-write-%E5%88%B0%E7%A3%81%E7%9B%98%E7%9A%84%E4%B8%80%E8%B7%AF"><span class="toc-number">1.</span> <span class="toc-text">文件 I&#x2F;O 到底发生了什么：从 write() 到磁盘的一路</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BD%A0%E5%86%99%E4%B8%8B%E7%9A%84%E6%AF%8F%E4%B8%AA%E5%AD%97%E8%8A%82%EF%BC%8C%E5%A4%A7%E6%A6%82%E7%8E%87%E8%BF%98%E5%9C%A8%E5%86%85%E5%AD%98%E9%87%8C"><span class="toc-number">1.1.</span> <span class="toc-text">你写下的每个字节，大概率还在内存里</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E5%B1%82%E4%B8%80%E5%B1%82%E5%BE%80%E4%B8%8B%E8%B5%B0%EF%BC%9A%E4%BB%8E-VFS-%E5%88%B0%E7%A3%81%E7%9B%98%E9%A9%B1%E5%8A%A8"><span class="toc-number">1.2.</span> <span class="toc-text">一层一层往下走：从 VFS 到磁盘驱动</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#VFS%EF%BC%9A%E4%B8%80%E4%B8%AA%E7%BB%9F%E4%B8%80%E5%85%A5%E5%8F%A3%EF%BC%8C%E5%AF%B9%E6%8E%A5%E5%87%A0%E5%8D%81%E7%A7%8D%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F"><span class="toc-number">1.2.1.</span> <span class="toc-text">VFS：一个统一入口，对接几十种文件系统</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Page-Cache%EF%BC%9A%E6%95%B4%E6%9D%A1-I-O-%E6%A0%88%E7%9A%84%E6%80%A7%E8%83%BD%E5%BF%83%E8%84%8F"><span class="toc-number">1.2.2.</span> <span class="toc-text">Page Cache：整条 I&#x2F;O 栈的性能心脏</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Block-%E5%B1%82%E5%92%8C-IO-%E8%B0%83%E5%BA%A6%E5%99%A8"><span class="toc-number">1.2.3.</span> <span class="toc-text">Block 层和 IO 调度器</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%BC%93%E5%86%B2-I-O%E3%80%81%E7%9B%B4%E6%8E%A5-I-O%E3%80%81%E5%90%8C%E6%AD%A5-I-O%EF%BC%9A%E4%B8%89%E4%BB%B6%E7%BB%8F%E5%B8%B8%E8%A2%AB%E6%90%9E%E6%B7%B7%E7%9A%84%E4%BA%8B"><span class="toc-number">1.3.</span> <span class="toc-text">缓冲 I&#x2F;O、直接 I&#x2F;O、同步 I&#x2F;O：三件经常被搞混的事</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E9%9B%B6%E6%8B%B7%E8%B4%9D%EF%BC%9A%E7%9B%AE%E6%A0%87%E6%98%AF%E8%AE%A9-CPU-%E4%B8%8D%E7%94%A8%E5%BD%93%E6%90%AC%E8%BF%90%E5%B7%A5"><span class="toc-number">1.4.</span> <span class="toc-text">零拷贝：目标是让 CPU 不用当搬运工</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#io-uring%EF%BC%9A%E6%8A%8A%E7%B3%BB%E7%BB%9F%E8%B0%83%E7%94%A8%E6%9C%AC%E8%BA%AB%E4%B9%9F%E7%9C%81%E4%BA%86"><span class="toc-number">1.5.</span> <span class="toc-text">io_uring：把系统调用本身也省了</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%8A%9B%E5%BC%80%E6%9C%AF%E8%AF%AD%EF%BC%8C%E6%96%87%E4%BB%B6-I-O-%E6%9C%AC%E8%B4%A8%E4%B8%8A%E6%98%AF%E5%9C%A8%E7%AE%A1%E7%90%86%E4%B8%89%E6%A0%B7%E4%B8%9C%E8%A5%BF"><span class="toc-number">1.6.</span> <span class="toc-text">抛开术语，文件 I&#x2F;O 本质上是在管理三样东西</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BB%A5%E5%90%8E%E6%88%91%E4%BC%9A%E5%85%88%E7%9C%8B%E5%AE%83%E5%88%B0%E5%BA%95%E7%BC%93%E5%86%B2%E5%9C%A8%E5%93%AA%E4%B8%80%E5%B1%82"><span class="toc-number">1.7.</span> <span class="toc-text">以后我会先看它到底缓冲在哪一层</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#References"><span class="toc-number">1.8.</span> <span class="toc-text">References</span></a></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/05/15/%E9%A1%B9%E7%9B%AE%E7%BA%A7Harness%E5%A6%82%E4%BD%95%E6%8A%8A%E7%9C%9F%E5%AE%9E%E4%BB%93%E5%BA%93%E5%8F%98%E6%88%90Agent%E7%8E%AF%E5%A2%83/" title="项目级Harness如何把真实仓库变成Agent环境">项目级Harness如何把真实仓库变成Agent环境</a><time datetime="2026-05-15T01:00:00.000Z" title="发表于 2026-05-15 09:00:00">2026-05-15</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/05/13/Agent%E8%AF%84%E6%B5%8B%E5%9F%BA%E7%BA%BF%E4%B8%8E%E5%9B%9E%E5%BD%92%E9%97%A8%E7%A6%81/" title="Agent评测基线与回归门禁">Agent评测基线与回归门禁</a><time datetime="2026-05-13T01:00:00.000Z" title="发表于 2026-05-13 09:00:00">2026-05-13</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/05/11/Agent%E9%95%BF%E4%BB%BB%E5%8A%A1%E7%BC%96%E6%8E%92%E4%B8%8E%E8%A1%A5%E5%81%BF%E4%BA%8B%E5%8A%A1/" title="Agent长任务编排与补偿事务">Agent长任务编排与补偿事务</a><time datetime="2026-05-11T01:00:00.000Z" title="发表于 2026-05-11 09:00:00">2026-05-11</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/05/10/Agent%E5%A4%9A%E7%A7%9F%E6%88%B7%E9%85%8D%E9%A2%9D%E4%B8%8E%E6%88%90%E6%9C%AC%E6%B2%BB%E7%90%86/" title="Agent多租户配额与成本治理">Agent多租户配额与成本治理</a><time datetime="2026-05-10T01:00:00.000Z" title="发表于 2026-05-10 09:00:00">2026-05-10</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/05/09/Agent%E6%B2%99%E7%AE%B1%E9%9A%94%E7%A6%BB%E4%B8%8E%E6%89%A7%E8%A1%8C%E7%8E%AF%E5%A2%83/" title="Agent沙箱隔离与执行环境">Agent沙箱隔离与执行环境</a><time datetime="2026-05-09T01:00:00.000Z" title="发表于 2026-05-09 09:00:00">2026-05-09</time></div></div></div></div></div></div></main><footer id="footer" style="background-image: url(/img/footer-bg.jpg);"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;YeeFayAI</span></div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.4"></script><script src="/js/main.js?v=5.5.4"></script><div class="js-pjax"></div><script>
+if (window.location.pathname === '/about/') {
+  const header = document.querySelector('#page-header');
+  if (header) {
+    const videoHtml = `
+      <div class="about-video-header">
+        <video autoplay muted loop playsinline>
+          <source src="/img/about-bg.mp4" type="video/mp4">
+        </video>
+        <div class="video-title">关于我</div>
+      </div>
+    `;
+    header.insertAdjacentHTML('afterend', videoHtml);
+  }
+}
+</script>
+<script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script><div id="local-search"><div class="search-dialog"><nav class="search-nav"><span class="search-dialog-title">搜索</span><i class="fas fa-spinner fa-pulse" id="loading-status" hidden="hidden"></i><button class="search-close-button"><i class="fas fa-times"></i></button></nav><div class="text-center" id="loading-database"><i class="fas fa-spinner fa-pulse"></i><span>  数据加载中</span></div><div class="local-search-input"><input placeholder="Search articles..." type="text"/></div><hr/><div id="local-search-results"></div><div class="ais-Pagination" id="local-search-pagination" style="display:none;"><ul class="ais-Pagination-list"></ul></div><div id="local-search-stats"></div></div><div id="search-mask"></div><script src="/js/search/local-search.js?v=5.5.4"></script></div></div></body></html>

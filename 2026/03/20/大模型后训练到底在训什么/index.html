@@ -1,0 +1,290 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>大模型后训练到底在训什么 | YeeFayAI</title><meta name="author" content="YeeFayAI"><meta name="copyright" content="YeeFayAI"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#F2EDF7"><meta name="description" content="大模型后训练到底在训什么 预训练给了模型知识，后训练教它做人。这篇文章讲清楚 SFT、RLHF、DPO、RLVR 各自在干什么，LoRA 和它们是什么关系，以及一个更关键的判断：什么时候该训，什么时候根本不用训。  先说结论后训练是一组技术的统称，解决一个核心问题：base model 像一个读完所有书但不会说人话的人，后训练把它变成能正常对话的助手。 但 2025 年之后更重要的判断是：大部分场">
+<meta property="og:type" content="article">
+<meta property="og:title" content="大模型后训练到底在训什么">
+<meta property="og:url" content="https://yeefayai.github.io/2026/03/20/%E5%A4%A7%E6%A8%A1%E5%9E%8B%E5%90%8E%E8%AE%AD%E7%BB%83%E5%88%B0%E5%BA%95%E5%9C%A8%E8%AE%AD%E4%BB%80%E4%B9%88/index.html">
+<meta property="og:site_name" content="YeeFayAI">
+<meta property="og:description" content="大模型后训练到底在训什么 预训练给了模型知识，后训练教它做人。这篇文章讲清楚 SFT、RLHF、DPO、RLVR 各自在干什么，LoRA 和它们是什么关系，以及一个更关键的判断：什么时候该训，什么时候根本不用训。  先说结论后训练是一组技术的统称，解决一个核心问题：base model 像一个读完所有书但不会说人话的人，后训练把它变成能正常对话的助手。 但 2025 年之后更重要的判断是：大部分场">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://yeefayai.github.io/img/YeeFay.jpg">
+<meta property="article:published_time" content="2026-03-20T01:00:00.000Z">
+<meta property="article:modified_time" content="2026-05-14T22:01:20.051Z">
+<meta property="article:author" content="YeeFayAI">
+<meta property="article:tag" content="Agent开发,人工智能,AI助手,大语言模型">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://yeefayai.github.io/img/YeeFay.jpg"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "大模型后训练到底在训什么",
+  "url": "https://yeefayai.github.io/2026/03/20/%E5%A4%A7%E6%A8%A1%E5%9E%8B%E5%90%8E%E8%AE%AD%E7%BB%83%E5%88%B0%E5%BA%95%E5%9C%A8%E8%AE%AD%E4%BB%80%E4%B9%88/",
+  "image": "https://yeefayai.github.io/img/YeeFay.jpg",
+  "datePublished": "2026-03-20T01:00:00.000Z",
+  "dateModified": "2026-05-14T22:01:20.051Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "YeeFayAI",
+      "url": "https://yeefayai.github.io"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/YeeFay.jpg"><link rel="canonical" href="https://yeefayai.github.io/2026/03/20/%E5%A4%A7%E6%A8%A1%E5%9E%8B%E5%90%8E%E8%AE%AD%E7%BB%83%E5%88%B0%E5%BA%95%E5%9C%A8%E8%AE%AD%E4%BB%80%E4%B9%88/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.5.4"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#3d2b1f')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#F2EDF7')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: {"path":"/search.xml","preload":false,"top_n_per_article":1,"unescape":false,"pagination":{"enable":false,"hitsPerPage":8},"languages":{"hits_empty":"未找到符合您查询的内容：${query}","hits_stats":"共找到 ${hits} 篇文章"}},
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":false},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'null',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: '大模型后训练到底在训什么',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><style>
+/* UI style tweak */
+#nav .menus_item a {
+  font-size: 18px !important;
+}
+/* UI style tweak */
+#search-button .site-page {
+  font-size: 18px !important;
+}
+/* UI style tweak */
+.card-announcement .item-headline i {
+  color: #7B6B8A !important;
+}
+/* UI style tweak */
+.about-video-header {
+  position: relative;
+  width: 100%;
+  height: 60vh;
+  overflow: hidden;
+  margin-top: -60px;
+  margin-bottom: 20px;
+}
+.about-video-header video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.about-video-header .video-title {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: #fff;
+  font-size: 32px;
+  font-weight: 700;
+  text-shadow: 2px 2px 8px rgba(0,0,0,0.5);
+  z-index: 10;
+}
+.about-video-header::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.3);
+}
+</style>
+<meta name="generator" content="Hexo 8.1.1"></head><body><div class="bg-animation" id="web_bg" style="background-color: #F8F5FA;"></div><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="/img/YeeFay.jpg" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 主页</span></a></div><div class="menus_item"><a class="site-page" href="/categories/agent-notes/"><i class="fa-fw fas fa-robot"></i><span> Agent学习笔记</span></a></div><div class="menus_item"><a class="site-page" href="/categories/portfolio/"><i class="fa-fw fas fa-star"></i><span> 作品集</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-user"></i><span> 关于我</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg" id="page-header"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">YeeFayAI</span></a><a class="nav-page-title" href="/"><span class="site-name">大模型后训练到底在训什么</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 主页</span></a></div><div class="menus_item"><a class="site-page" href="/categories/agent-notes/"><i class="fa-fw fas fa-robot"></i><span> Agent学习笔记</span></a></div><div class="menus_item"><a class="site-page" href="/categories/portfolio/"><i class="fa-fw fas fa-star"></i><span> 作品集</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-user"></i><span> 关于我</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">大模型后训练到底在训什么</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-03-20T01:00:00.000Z" title="发表于 2026-03-20 09:00:00">2026-03-20</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-05-14T22:01:20.051Z" title="更新于 2026-05-15 06:01:20">2026-05-15</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/agent-notes/">Agent学习笔记</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><h1 id="大模型后训练到底在训什么"><a href="#大模型后训练到底在训什么" class="headerlink" title="大模型后训练到底在训什么"></a>大模型后训练到底在训什么</h1><blockquote>
+<p>预训练给了模型知识，后训练教它做人。这篇文章讲清楚 SFT、RLHF、DPO、RLVR 各自在干什么，LoRA 和它们是什么关系，以及一个更关键的判断：什么时候该训，什么时候根本不用训。</p>
+</blockquote>
+<h2 id="先说结论"><a href="#先说结论" class="headerlink" title="先说结论"></a>先说结论</h2><p>后训练是一组技术的统称，解决一个核心问题：base model 像一个读完所有书但不会说人话的人，后训练把它变成能正常对话的助手。</p>
+<p>但 2025 年之后更重要的判断是：大部分场景你根本不需要后训练。Prompt + RAG 能解决 80% 的问题。后训练只在格式强约束、小模型降本、数据敏感三个场景才值得投入。</p>
+<h2 id="基础知识"><a href="#基础知识" class="headerlink" title="基础知识"></a>基础知识</h2><h3 id="预训练-vs-后训练"><a href="#预训练-vs-后训练" class="headerlink" title="预训练 vs 后训练"></a>预训练 vs 后训练</h3><p><strong>预训练</strong>：几万亿 token 的互联网文本，训一个”下一个词预测器”。烧几千万美元，跑几个月。产出是 base model——什么都”知道”，但什么都不”会做”。</p>
+<p><strong>后训练</strong>：在 base model 上用少量高质量数据教它”怎么做事”。成本低得多，但决定最终体验。</p>
+<p>类比：预训练是让人读完图书馆。后训练是教这个人怎么和别人说话。</p>
+<h3 id="Decoder-only-架构"><a href="#Decoder-only-架构" class="headerlink" title="Decoder-only 架构"></a>Decoder-only 架构</h3><p>GPT、Claude、Qwen、DeepSeek、LLaMA 全部是 Decoder-only Transformer。</p>
+<p>核心机制四件套：</p>
+<ul>
+<li>输入 token 序列，预测下一个 token</li>
+<li>Causal Mask 保证只看前面</li>
+<li>KV Cache 加速推理</li>
+<li>RoPE 做位置编码</li>
+</ul>
+<p>后训练不改架构，只改权重。</p>
+<h3 id="对齐"><a href="#对齐" class="headerlink" title="对齐"></a>对齐</h3><p>后训练的目标叫”对齐”——让模型行为和人类期望一致。三层：有用、诚实、无害。所有后训练技术都在优化这三个目标的某个子集。</p>
+<h2 id="后训练的流水线"><a href="#后训练的流水线" class="headerlink" title="后训练的流水线"></a>后训练的流水线</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">Base Model → SFT → RLHF/DPO → 部署</span><br></pre></td></tr></table></figure>
+
+<p>SFT 解决”会不会说人话”。RLHF&#x2F;DPO 解决”说的话好不好”。两步是递进，不是替代。</p>
+<h2 id="四种方法"><a href="#四种方法" class="headerlink" title="四种方法"></a>四种方法</h2><h3 id="SFT"><a href="#SFT" class="headerlink" title="SFT"></a>SFT</h3><p>准备”问题-回答”对，让模型模仿。标准交叉熵损失。</p>
+<p>解决的问题：让 base model 从”续写文本”变成”回答问题”。</p>
+<p>局限：只能教模仿，不能教判断。模型学到表面模式，不是质量标准。</p>
+<h3 id="RLHF"><a href="#RLHF" class="headerlink" title="RLHF"></a>RLHF</h3><p>三步：收集人类偏好标注 → 训 Reward Model → PPO 优化。</p>
+<p>解决的问题：让模型不只是”能回答”，而是”回答得好”。</p>
+<p>局限：Reward Model 有偏差、PPO 不稳定、工程复杂度极高（同时维护 4 个模型）。</p>
+<h3 id="DPO"><a href="#DPO" class="headerlink" title="DPO"></a>DPO</h3><p>跳过 Reward Model，直接用偏好对训模型。一个损失函数搞定。</p>
+<p>和 RLHF 目标一样，工程简单 10 倍。代价是对数据质量要求更高，出问题不好排查。</p>
+<p>2025 年的选择：小团队用 DPO，大厂用 RLHF。</p>
+<h3 id="RLVR"><a href="#RLVR" class="headerlink" title="RLVR"></a>RLVR</h3><p>随 DeepSeek-R1 火起来。对有标准答案的任务（数学、代码），直接用”答案对不对”做奖励，不需要人类标注。用 GRPO 优化。</p>
+<p>局限：只适用于可验证任务。开放式对话用不了。</p>
+<h2 id="容易想错的地方"><a href="#容易想错的地方" class="headerlink" title="容易想错的地方"></a>容易想错的地方</h2><h3 id="“后训练就是-LoRA”"><a href="#“后训练就是-LoRA”" class="headerlink" title="“后训练就是 LoRA”"></a>“后训练就是 LoRA”</h3><p>LoRA 不是后训练方法，是省显存的实现手段。后训练方法定义”训什么目标”，LoRA 定义”怎么省着训”。两者正交——你可以用 LoRA 做 SFT，也可以用 LoRA 做 DPO，也可以不用 LoRA 全参数训。</p>
+<p>LoRA 的本质：每层加两个低秩小矩阵，训练参数从几十亿降到几百万。</p>
+<h3 id="“后训练是必须的”"><a href="#“后训练是必须的”" class="headerlink" title="“后训练是必须的”"></a>“后训练是必须的”</h3><p>最大的误解。GPT-4 &#x2F; Claude &#x2F; DeepSeek V3 &#x2F; Qwen2.5 未微调就能做绝大部分下游任务。Prompt + RAG 覆盖 80% 需求。</p>
+<h3 id="“训练和推理用同一个工具”"><a href="#“训练和推理用同一个工具”" class="headerlink" title="“训练和推理用同一个工具”"></a>“训练和推理用同一个工具”</h3><p>训练用 PyTorch + PEFT + LLaMA-Factory。推理用 Ollama &#x2F; vLLM。Ollama 不做训练。训好的模型要转 GGUF 格式才能上 Ollama。</p>
+<h2 id="底层约束"><a href="#底层约束" class="headerlink" title="底层约束"></a>底层约束</h2><p>四个绕不开的代价：</p>
+<p><strong>数据</strong>：效果完全取决于数据质量。几千条高质量 &gt; 几万条低质量。数据是最贵的成本。</p>
+<p><strong>灾难性遗忘</strong>：教它新能力，旧能力可能退化。固有代价。</p>
+<p><strong>评测困难</strong>：”变好了吗？”极难回答。自动指标只覆盖一部分，人工评测贵且主观。</p>
+<p><strong>运维成本</strong>：base 模型升级，你的微调就作废。Qwen2.5 → Qwen3，LoRA adapter 直接报废。</p>
+<p>结论：后训练是高成本、高风险、高维护的操作。</p>
+<h2 id="知识注入的三条路径"><a href="#知识注入的三条路径" class="headerlink" title="知识注入的三条路径"></a>知识注入的三条路径</h2><p>把后训练放到统一框架里看：</p>
+<ul>
+<li><strong>参数化</strong>（后训练）：知识压进权重。永久但不可逆。</li>
+<li><strong>上下文化</strong>（Prompt &#x2F; RAG）：知识放进 context window。动态可更新。</li>
+<li><strong>工具化</strong>（Function Call &#x2F; MCP）：知识外挂到工具。实时精确。</li>
+</ul>
+<p>选哪条取决于知识特性：</p>
+<ul>
+<li>静态 + 极快响应 → 参数化</li>
+<li>动态 + 可追溯 → 上下文化</li>
+<li>实时 + 精确计算 → 工具化</li>
+</ul>
+<p>这个框架叫 Context Engineering。不再纠结”要不要微调”，而是问”知识从哪条路径注入最经济”。</p>
+<h2 id="三个场景验证"><a href="#三个场景验证" class="headerlink" title="三个场景验证"></a>三个场景验证</h2><p><strong>心理咨询机器人</strong>：风格稳定性 → LoRA 微调；咨询知识 → RAG；危机干预 → Prompt。三条路径组合。</p>
+<p><strong>行业研究 Agent</strong>：通用推理 → 强 base model；行业知识 → RAG；搜索计算 → Function Call；报告格式 → Prompt。完全不需要后训练。</p>
+<p><strong>代码补全工具</strong>：通用代码能力 → 不训；项目上下文 → RAG；风格约定 → Prompt。只有极致延迟要求时才考虑小模型微调。</p>
+<h2 id="判断方法"><a href="#判断方法" class="headerlink" title="判断方法"></a>判断方法</h2><p><strong>Step 1</strong>：强 base model + 好 Prompt 能做吗？能 → 不训。</p>
+<p><strong>Step 2</strong>：瓶颈是什么？知识不够加 RAG；格式不稳定考虑 SFT；推理不够考虑 DPO；延迟太高考虑小模型 LoRA。</p>
+<p><strong>Step 3</strong>：有高质量数据吗？没有 → 别训，数据不够训出来比不训更差。</p>
+<p><strong>Step 4</strong>：能承受运维吗？不能 → 用 Prompt + RAG，跟着 base 模型升级自动变强。</p>
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>后训练是”把知识压进权重”的手段。代价是数据成本、灾难性遗忘、运维负担。大部分场景的最优解是 Context Engineering。</p>
+<p>能用 Prompt 解决的问题，用 Prompt 解决。这不是偷懒，是工程判断。</p>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="https://yeefayai.github.io">YeeFayAI</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://yeefayai.github.io/2026/03/20/%E5%A4%A7%E6%A8%A1%E5%9E%8B%E5%90%8E%E8%AE%AD%E7%BB%83%E5%88%B0%E5%BA%95%E5%9C%A8%E8%AE%AD%E4%BB%80%E4%B9%88/">https://yeefayai.github.io/2026/03/20/%E5%A4%A7%E6%A8%A1%E5%9E%8B%E5%90%8E%E8%AE%AD%E7%BB%83%E5%88%B0%E5%BA%95%E5%9C%A8%E8%AE%AD%E4%BB%80%E4%B9%88/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://yeefayai.github.io" target="_blank">YeeFayAI</a>！</span></div></div><div class="tag_share"><div class="post-share"><div class="social-share" data-image="/img/YeeFay.jpg" data-sites="facebook,x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/2026/03/21/%E5%85%B3%E4%BA%8E%E4%BD%9C%E5%93%81%E9%9B%86/" title="关于作品集"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">关于作品集</div></div><div class="info-2"><div class="info-item-1">作品集这里展示我的个人项目与作品。 包括：  独立开发的小工具 有趣的编程项目 其他创意作品  每个作品都记录了从想法到实现的过程。 </div></div></div></a><a class="pagination-related" href="/2026/03/19/Prompt-Caching%E4%B8%8EKV-Cache%E6%B7%B1%E5%BA%A6%E8%A7%A3%E6%9E%90/" title="Prompt-Caching与KV-Cache深度解析"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">Prompt-Caching与KV-Cache深度解析</div></div><div class="info-2"><div class="info-item-1">LLM Prompt Caching 与 KV Cache 深度解析 摘要：本文从 Transformer 的 KV Cache 原理出发，深入分析 Anthropic Prompt Caching 的设计机制，包括缓存键计算、缓存断点策略、global&#x2F;org scope 的区别，以及 Claude Code 的实际实现代码。帮助读者理解 LLM 推理优化的核心技术。  一、KV Cache：Transformer 推理的核心优化1.1 什么是 KV CacheTransformer 模型在推理时，每一层都会计算 Query (Q)、Key (K)、Value (V) 三个向量。其中 K 和 V 可以被缓存起来，避免重复计算。 注意力计算公式： 1Output = softmax(Q × K^T) × V  当模型生成 token 时，每个新 token 都需要与之前所有 token 计算注意力。如果没有 KV Cache，每次生成都要重新计算所有历史 token 的 K 和 V，这会造成巨大的计算浪费。 1.2 KV Cache 的工作原理   步骤 操作 说明  ...</div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="/img/YeeFay.jpg" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">YeeFayAI</div><div class="author-info-description">Agent is all you need</div><a id="card-info-btn" target="_blank" rel="noopener" href="https://github.com/YeeFayAI"><i class="fab fa-github"></i><span>Follow Me</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/YeeFayAI" target="_blank" title="Github"><i class="fab fa-github" style="color: #24292e;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">Hello, I am YeeFay. Welcome to my blog!</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E5%A4%A7%E6%A8%A1%E5%9E%8B%E5%90%8E%E8%AE%AD%E7%BB%83%E5%88%B0%E5%BA%95%E5%9C%A8%E8%AE%AD%E4%BB%80%E4%B9%88"><span class="toc-number">1.</span> <span class="toc-text">大模型后训练到底在训什么</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%88%E8%AF%B4%E7%BB%93%E8%AE%BA"><span class="toc-number">1.1.</span> <span class="toc-text">先说结论</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86"><span class="toc-number">1.2.</span> <span class="toc-text">基础知识</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%A2%84%E8%AE%AD%E7%BB%83-vs-%E5%90%8E%E8%AE%AD%E7%BB%83"><span class="toc-number">1.2.1.</span> <span class="toc-text">预训练 vs 后训练</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Decoder-only-%E6%9E%B6%E6%9E%84"><span class="toc-number">1.2.2.</span> <span class="toc-text">Decoder-only 架构</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%AF%B9%E9%BD%90"><span class="toc-number">1.2.3.</span> <span class="toc-text">对齐</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%90%8E%E8%AE%AD%E7%BB%83%E7%9A%84%E6%B5%81%E6%B0%B4%E7%BA%BF"><span class="toc-number">1.3.</span> <span class="toc-text">后训练的流水线</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E7%A7%8D%E6%96%B9%E6%B3%95"><span class="toc-number">1.4.</span> <span class="toc-text">四种方法</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#SFT"><span class="toc-number">1.4.1.</span> <span class="toc-text">SFT</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#RLHF"><span class="toc-number">1.4.2.</span> <span class="toc-text">RLHF</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#DPO"><span class="toc-number">1.4.3.</span> <span class="toc-text">DPO</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#RLVR"><span class="toc-number">1.4.4.</span> <span class="toc-text">RLVR</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%AE%B9%E6%98%93%E6%83%B3%E9%94%99%E7%9A%84%E5%9C%B0%E6%96%B9"><span class="toc-number">1.5.</span> <span class="toc-text">容易想错的地方</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E2%80%9C%E5%90%8E%E8%AE%AD%E7%BB%83%E5%B0%B1%E6%98%AF-LoRA%E2%80%9D"><span class="toc-number">1.5.1.</span> <span class="toc-text">“后训练就是 LoRA”</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E2%80%9C%E5%90%8E%E8%AE%AD%E7%BB%83%E6%98%AF%E5%BF%85%E9%A1%BB%E7%9A%84%E2%80%9D"><span class="toc-number">1.5.2.</span> <span class="toc-text">“后训练是必须的”</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E2%80%9C%E8%AE%AD%E7%BB%83%E5%92%8C%E6%8E%A8%E7%90%86%E7%94%A8%E5%90%8C%E4%B8%80%E4%B8%AA%E5%B7%A5%E5%85%B7%E2%80%9D"><span class="toc-number">1.5.3.</span> <span class="toc-text">“训练和推理用同一个工具”</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%BA%95%E5%B1%82%E7%BA%A6%E6%9D%9F"><span class="toc-number">1.6.</span> <span class="toc-text">底层约束</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%9F%A5%E8%AF%86%E6%B3%A8%E5%85%A5%E7%9A%84%E4%B8%89%E6%9D%A1%E8%B7%AF%E5%BE%84"><span class="toc-number">1.7.</span> <span class="toc-text">知识注入的三条路径</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E4%B8%AA%E5%9C%BA%E6%99%AF%E9%AA%8C%E8%AF%81"><span class="toc-number">1.8.</span> <span class="toc-text">三个场景验证</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%88%A4%E6%96%AD%E6%96%B9%E6%B3%95"><span class="toc-number">1.9.</span> <span class="toc-text">判断方法</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%80%BB%E7%BB%93"><span class="toc-number">1.10.</span> <span class="toc-text">总结</span></a></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/05/15/%E9%A1%B9%E7%9B%AE%E7%BA%A7Harness%E5%A6%82%E4%BD%95%E6%8A%8A%E7%9C%9F%E5%AE%9E%E4%BB%93%E5%BA%93%E5%8F%98%E6%88%90Agent%E7%8E%AF%E5%A2%83/" title="项目级Harness如何把真实仓库变成Agent环境">项目级Harness如何把真实仓库变成Agent环境</a><time datetime="2026-05-15T01:00:00.000Z" title="发表于 2026-05-15 09:00:00">2026-05-15</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/05/13/Agent%E8%AF%84%E6%B5%8B%E5%9F%BA%E7%BA%BF%E4%B8%8E%E5%9B%9E%E5%BD%92%E9%97%A8%E7%A6%81/" title="Agent评测基线与回归门禁">Agent评测基线与回归门禁</a><time datetime="2026-05-13T01:00:00.000Z" title="发表于 2026-05-13 09:00:00">2026-05-13</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/05/11/Agent%E9%95%BF%E4%BB%BB%E5%8A%A1%E7%BC%96%E6%8E%92%E4%B8%8E%E8%A1%A5%E5%81%BF%E4%BA%8B%E5%8A%A1/" title="Agent长任务编排与补偿事务">Agent长任务编排与补偿事务</a><time datetime="2026-05-11T01:00:00.000Z" title="发表于 2026-05-11 09:00:00">2026-05-11</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/05/10/Agent%E5%A4%9A%E7%A7%9F%E6%88%B7%E9%85%8D%E9%A2%9D%E4%B8%8E%E6%88%90%E6%9C%AC%E6%B2%BB%E7%90%86/" title="Agent多租户配额与成本治理">Agent多租户配额与成本治理</a><time datetime="2026-05-10T01:00:00.000Z" title="发表于 2026-05-10 09:00:00">2026-05-10</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/05/09/Agent%E6%B2%99%E7%AE%B1%E9%9A%94%E7%A6%BB%E4%B8%8E%E6%89%A7%E8%A1%8C%E7%8E%AF%E5%A2%83/" title="Agent沙箱隔离与执行环境">Agent沙箱隔离与执行环境</a><time datetime="2026-05-09T01:00:00.000Z" title="发表于 2026-05-09 09:00:00">2026-05-09</time></div></div></div></div></div></div></main><footer id="footer" style="background-image: url(/img/footer-bg.jpg);"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;YeeFayAI</span></div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.4"></script><script src="/js/main.js?v=5.5.4"></script><div class="js-pjax"></div><script>
+if (window.location.pathname === '/about/') {
+  const header = document.querySelector('#page-header');
+  if (header) {
+    const videoHtml = `
+      <div class="about-video-header">
+        <video autoplay muted loop playsinline>
+          <source src="/img/about-bg.mp4" type="video/mp4">
+        </video>
+        <div class="video-title">关于我</div>
+      </div>
+    `;
+    header.insertAdjacentHTML('afterend', videoHtml);
+  }
+}
+</script>
+<script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script><div id="local-search"><div class="search-dialog"><nav class="search-nav"><span class="search-dialog-title">搜索</span><i class="fas fa-spinner fa-pulse" id="loading-status" hidden="hidden"></i><button class="search-close-button"><i class="fas fa-times"></i></button></nav><div class="text-center" id="loading-database"><i class="fas fa-spinner fa-pulse"></i><span>  数据加载中</span></div><div class="local-search-input"><input placeholder="Search articles..." type="text"/></div><hr/><div id="local-search-results"></div><div class="ais-Pagination" id="local-search-pagination" style="display:none;"><ul class="ais-Pagination-list"></ul></div><div id="local-search-stats"></div></div><div id="search-mask"></div><script src="/js/search/local-search.js?v=5.5.4"></script></div></div></body></html>
