@@ -1,0 +1,500 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>深入浅出MCP | YeeFayAI</title><meta name="author" content="YeeFayAI"><meta name="copyright" content="YeeFayAI"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#F2EDF7"><meta name="description" content="深入浅出 MCP MCP 最值得讲的，不是“模型终于能调工具了”，而是外部世界第一次被整理成了一套对 Agent 友好的标准接口。  先别急着把 MCP 讲成“AI 的 USB-C”“MCP 像 AI 世界里的 USB-C”这句话传播得很广，因为它好记，也不算错。问题是，它会把一件本来很具体的工程问题，说成一个太轻的类比。 对 Claude Code 这种 Agent 来说，真正的难点从来不是“能">
+<meta property="og:type" content="article">
+<meta property="og:title" content="深入浅出MCP">
+<meta property="og:url" content="https://yeefayai.github.io/2026/05/16/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BAMCP/index.html">
+<meta property="og:site_name" content="YeeFayAI">
+<meta property="og:description" content="深入浅出 MCP MCP 最值得讲的，不是“模型终于能调工具了”，而是外部世界第一次被整理成了一套对 Agent 友好的标准接口。  先别急着把 MCP 讲成“AI 的 USB-C”“MCP 像 AI 世界里的 USB-C”这句话传播得很广，因为它好记，也不算错。问题是，它会把一件本来很具体的工程问题，说成一个太轻的类比。 对 Claude Code 这种 Agent 来说，真正的难点从来不是“能">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://yeefayai.github.io/img/YeeFay.jpg">
+<meta property="article:published_time" content="2026-05-15T21:12:00.000Z">
+<meta property="article:modified_time" content="2026-05-15T21:12:00.429Z">
+<meta property="article:author" content="YeeFayAI">
+<meta property="article:tag" content="Agent开发,人工智能,AI助手,大语言模型">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://yeefayai.github.io/img/YeeFay.jpg"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "深入浅出MCP",
+  "url": "https://yeefayai.github.io/2026/05/16/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BAMCP/",
+  "image": "https://yeefayai.github.io/img/YeeFay.jpg",
+  "datePublished": "2026-05-15T21:12:00.000Z",
+  "dateModified": "2026-05-15T21:12:00.429Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "YeeFayAI",
+      "url": "https://yeefayai.github.io"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/YeeFay.jpg"><link rel="canonical" href="https://yeefayai.github.io/2026/05/16/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BAMCP/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.5.4"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#3d2b1f')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#F2EDF7')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: {"path":"/search.xml","preload":false,"top_n_per_article":1,"unescape":false,"pagination":{"enable":false,"hitsPerPage":8},"languages":{"hits_empty":"未找到符合您查询的内容：${query}","hits_stats":"共找到 ${hits} 篇文章"}},
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":false},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'null',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: '深入浅出MCP',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><style>
+/* UI style tweak */
+#nav .menus_item a {
+  font-size: 18px !important;
+}
+/* UI style tweak */
+#search-button .site-page {
+  font-size: 18px !important;
+}
+/* UI style tweak */
+.card-announcement .item-headline i {
+  color: #7B6B8A !important;
+}
+/* UI style tweak */
+.about-video-header {
+  position: relative;
+  width: 100%;
+  height: 60vh;
+  overflow: hidden;
+  margin-top: -60px;
+  margin-bottom: 20px;
+}
+.about-video-header video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.about-video-header .video-title {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: #fff;
+  font-size: 32px;
+  font-weight: 700;
+  text-shadow: 2px 2px 8px rgba(0,0,0,0.5);
+  z-index: 10;
+}
+.about-video-header::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.3);
+}
+</style>
+<meta name="generator" content="Hexo 8.1.1"></head><body><div class="bg-animation" id="web_bg" style="background-color: #F8F5FA;"></div><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="/img/YeeFay.jpg" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 主页</span></a></div><div class="menus_item"><a class="site-page" href="/categories/agent-notes/"><i class="fa-fw fas fa-robot"></i><span> Agent学习笔记</span></a></div><div class="menus_item"><a class="site-page" href="/categories/portfolio/"><i class="fa-fw fas fa-star"></i><span> 作品集</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-user"></i><span> 关于我</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg" id="page-header"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">YeeFayAI</span></a><a class="nav-page-title" href="/"><span class="site-name">深入浅出MCP</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 主页</span></a></div><div class="menus_item"><a class="site-page" href="/categories/agent-notes/"><i class="fa-fw fas fa-robot"></i><span> Agent学习笔记</span></a></div><div class="menus_item"><a class="site-page" href="/categories/portfolio/"><i class="fa-fw fas fa-star"></i><span> 作品集</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-user"></i><span> 关于我</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">深入浅出MCP</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-05-15T21:12:00.000Z" title="发表于 2026-05-16 05:12:00">2026-05-16</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-05-15T21:12:00.429Z" title="更新于 2026-05-16 05:12:00">2026-05-16</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/agent-notes/">Agent学习笔记</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><h1 id="深入浅出-MCP"><a href="#深入浅出-MCP" class="headerlink" title="深入浅出 MCP"></a>深入浅出 MCP</h1><blockquote>
+<p>MCP 最值得讲的，不是“模型终于能调工具了”，而是外部世界第一次被整理成了一套对 Agent 友好的标准接口。</p>
+</blockquote>
+<h2 id="先别急着把-MCP-讲成“AI-的-USB-C”"><a href="#先别急着把-MCP-讲成“AI-的-USB-C”" class="headerlink" title="先别急着把 MCP 讲成“AI 的 USB-C”"></a>先别急着把 MCP 讲成“AI 的 USB-C”</h2><p>“MCP 像 AI 世界里的 USB-C”这句话传播得很广，因为它好记，也不算错。问题是，它会把一件本来很具体的工程问题，说成一个太轻的类比。</p>
+<p>对 Claude Code 这种 Agent 来说，真正的难点从来不是“能不能发一个函数调用”，而是三件更麻烦的事：</p>
+<ul>
+<li>它怎么知道外部系统到底提供了什么能力。</li>
+<li>它怎么区分哪些东西是上下文，哪些东西是动作。</li>
+<li>它怎么在权限、认证、上下文预算这些硬约束里工作。</li>
+</ul>
+<p>如果没有一套统一约定，每接一个系统，都得手写一套接法。文件系统一套，GitHub 一套，数据库一套，监控平台又一套。每个系统都要各自定义认证方式、参数格式、结果结构、错误处理、权限边界。模型层看起来像“工具变多了”，宿主层其实是在持续堆适配器。</p>
+<p>MCP 想解决的，就是这层适配器地狱。</p>
+<p>所以这篇文章不从比喻开始，而是从基础开始。先把协议本身讲清楚，再回到 Claude Code，看它为什么一接上 MCP，就不再只是一个“会聊天的代码助手”。</p>
+<h2 id="先把地板铺平：MCP-到底在定义什么"><a href="#先把地板铺平：MCP-到底在定义什么" class="headerlink" title="先把地板铺平：MCP 到底在定义什么"></a>先把地板铺平：MCP 到底在定义什么</h2><h3 id="没有协议的时候，Agent-接外部世界靠的是手搓适配"><a href="#没有协议的时候，Agent-接外部世界靠的是手搓适配" class="headerlink" title="没有协议的时候，Agent 接外部世界靠的是手搓适配"></a>没有协议的时候，Agent 接外部世界靠的是手搓适配</h3><p>先看最朴素的情况。一个 Agent 想访问外部世界，至少要处理四类问题：</p>
+<ol>
+<li>连接问题：本地进程怎么起，远程服务怎么连。</li>
+<li>描述问题：外部能力叫什么，接收什么参数，返回什么结构。</li>
+<li>边界问题：什么动作需要授权，什么结果可以直接喂回模型。</li>
+<li>生命周期问题：连接断了怎么办，能力变了怎么办，会话怎么恢复。</li>
+</ol>
+<p>没有标准协议时，这四类问题都得一套一套重做。你可以把这种模式理解成“每接一个系统，就重新发明一遍小型集成框架”。</p>
+<p>MCP 的价值，不是发明了“工具调用”这件事，而是把这些公共问题抽出来，变成了统一的协议层。</p>
+<h3 id="在-MCP-里，Claude-Code-首先是宿主，不只是一个聊天窗口"><a href="#在-MCP-里，Claude-Code-首先是宿主，不只是一个聊天窗口" class="headerlink" title="在 MCP 里，Claude Code 首先是宿主，不只是一个聊天窗口"></a>在 MCP 里，Claude Code 首先是宿主，不只是一个聊天窗口</h3><p>官方文档把参与者拆成三层：<code>host</code>、<code>client</code>、<code>server</code>。</p>
+<ul>
+<li><code>host</code> 是宿主应用，比如 Claude Code、Claude Desktop 这类真正承载用户会话的程序。</li>
+<li><code>client</code> 是宿主里专门负责和某个 MCP server 通信的那一层。</li>
+<li><code>server</code> 是暴露能力的一端，可能是本地进程，也可能是远程服务。</li>
+</ul>
+<p>这层拆分很关键。因为模型本身并不直接“连外部世界”。真正负责建立连接、保存能力清单、做权限判断、回收资源的，是 Claude Code 这个宿主。</p>
+<p>换句话说，Claude Code 不是简单地把 MCP 当成一个插件市场。它更像一个运行时控制面：每接一个 MCP server，Claude Code 都要替模型管理一条受约束的工作链。</p>
+<h3 id="真正交换的东西分两层：数据层和传输层"><a href="#真正交换的东西分两层：数据层和传输层" class="headerlink" title="真正交换的东西分两层：数据层和传输层"></a>真正交换的东西分两层：数据层和传输层</h3><p>MCP 官方架构把协议分成两层：</p>
+<ul>
+<li>数据层：定义消息语义，基于 JSON-RPC 2.0，负责 lifecycle、primitives、notifications 这些“到底在说什么”的问题。</li>
+<li>传输层：定义消息怎么送达，负责 <code>stdio</code>、<code>Streamable HTTP</code>、认证、连接建立这些“到底怎么送”的问题。</li>
+</ul>
+<p>这个拆法特别像网络工程里的分层思想。它的好处是，能力描述可以稳定下来，底下走本地进程还是远程流式连接，可以分别处理。</p>
+<p>在 Claude Code 里，这个分层很有现实意义：</p>
+<ul>
+<li>用 <code>stdio</code> 时，宿主拉起本地子进程，通过标准输入输出通信，适合本机工具。</li>
+<li>用 <code>Streamable HTTP</code> 时，宿主要处理远程连接、认证头、超时、重连、服务端流式响应，适合在线服务。</li>
+</ul>
+<p>MCP 规范还专门提醒，HTTP 传输下服务端应该校验 <code>Origin</code>，本地部署时最好只绑 <code>localhost</code>，否则会暴露 DNS rebinding 风险。这说明传输层不是一个实现细节，而是安全边界的一部分。</p>
+<h3 id="一条-MCP-连接不是“直接开调”，而是先握手"><a href="#一条-MCP-连接不是“直接开调”，而是先握手" class="headerlink" title="一条 MCP 连接不是“直接开调”，而是先握手"></a>一条 MCP 连接不是“直接开调”，而是先握手</h3><p>MCP 是有状态协议。也就是说，连接建立后不是立刻开始干活，而是要先做 lifecycle 管理。</p>
+<p>这一步至少要确认三件事：</p>
+<ol>
+<li>双方说的是哪一版协议。</li>
+<li>双方各自支持哪些能力。</li>
+<li>这条连接后面允不允许动态更新、用户输入、资源订阅之类的扩展行为。</li>
+</ol>
+<p>官方规范把初始化放在最前面，不是为了仪式感，而是因为后面很多行为都依赖这次协商。比如服务端如果支持 <code>tools/list_changed</code> 通知，就得在能力声明里先说清楚；客户端如果支持 <code>sampling</code> 或 <code>elicitation</code>，也得先告诉对方。</p>
+<p>因此，MCP 不是“给我一个工具名，我现在就调”。它先建立一段双方都认账的会话，再在这段会话里暴露能力。</p>
+<h3 id="Tools、Resources、Prompts，其实是在分三种完全不同的需求"><a href="#Tools、Resources、Prompts，其实是在分三种完全不同的需求" class="headerlink" title="Tools、Resources、Prompts，其实是在分三种完全不同的需求"></a><code>Tools</code>、<code>Resources</code>、<code>Prompts</code>，其实是在分三种完全不同的需求</h3><p>很多人一提 MCP，脑子里只剩 <code>tools</code>。这不够。</p>
+<p>MCP 在服务端侧定义了三类核心原语：</p>
+<ul>
+<li><code>Tools</code>：可执行动作。比如读数据库、调 API、改状态。</li>
+<li><code>Resources</code>：可引用上下文。比如文件内容、文档、schema、历史记录。</li>
+<li><code>Prompts</code>：可复用的交互模板。比如某类任务该怎么组织输入，怎么带少量示例。</li>
+</ul>
+<p>这三层的分工非常重要。</p>
+<p><code>Tool</code> 解决的是“帮我做事”。<br><code>Resource</code> 解决的是“先给我看东西”。<br><code>Prompt</code> 解决的是“这一类事情最好怎么和模型配合”。</p>
+<p>在 Claude Code 里，这三层会落成完全不同的使用体验：</p>
+<ul>
+<li><code>tools/list</code> 发现出来的能力，会变成模型可调用的动作集合。</li>
+<li><code>resources</code> 可以通过 <code>@server:protocol://resource/path</code> 这种方式被引用进上下文。</li>
+<li><code>prompts</code> 会以 <code>/mcp__servername__promptname</code> 的形式出现在斜杠命令里。</li>
+</ul>
+<p>如果不把这三层分开，你最后很容易把一切都塞进 <code>tool calling</code>，结果是上下文和动作混在一起，既难控，也难用。</p>
+<h3 id="Sampling、Elicitation、Notifications-让它不是单向工具箱"><a href="#Sampling、Elicitation、Notifications-让它不是单向工具箱" class="headerlink" title="Sampling、Elicitation、Notifications 让它不是单向工具箱"></a><code>Sampling</code>、<code>Elicitation</code>、<code>Notifications</code> 让它不是单向工具箱</h3><p>MCP 还有一层常被忽略的设计：它不是“服务端只会被调用”的单向模型。</p>
+<p>客户端侧也可以暴露能力给服务端，比如：</p>
+<ul>
+<li><code>sampling</code>：服务端可以请求宿主代发一次模型生成。</li>
+<li><code>elicitation</code>：服务端可以在中途向用户要结构化输入。</li>
+<li><code>logging</code>：服务端可以把日志发回宿主。</li>
+</ul>
+<p>此外，协议支持通知机制。比如服务端能力变了，可以主动发 <code>list_changed</code>，客户端收到后再刷新自己的能力视图。</p>
+<p>这件事很重要，因为它意味着 MCP 管理的不是“函数目录”，而是一条活着的工作链。这个链路里，服务端、宿主、用户都可能在不同时间点重新介入。</p>
+<h2 id="把术语拿掉，MCP-的基本原理其实很朴素"><a href="#把术语拿掉，MCP-的基本原理其实很朴素" class="headerlink" title="把术语拿掉，MCP 的基本原理其实很朴素"></a>把术语拿掉，MCP 的基本原理其实很朴素</h2><p>把各种名词都扔掉，MCP 本质上在做五件事：</p>
+<ul>
+<li>定义输入：外部系统怎么把自己的能力和数据描述出来。</li>
+<li>定义状态：连接一旦建立，双方怎么知道彼此支持什么。</li>
+<li>定义动作：哪些能力是可执行的，参数长什么样，结果怎么回。</li>
+<li>定义反馈：能力变化了、需要用户确认了、需要补充输入了，该怎么通知。</li>
+<li>定义边界：传输、认证、权限、输出体量这些限制，宿主应该在哪里收口。</li>
+</ul>
+<p>所以 MCP 不是在替模型“增加智力”，而是在替宿主“整理外部世界”。</p>
+<p>这个原理一旦想明白，你就不会再把 MCP 看成一个花哨的连接器。它更像一层面向 Agent 的 I&#x2F;O 协议：外部世界不再以“各种零散 API”的形式出现，而是以“可发现、可协商、可受控的能力面”出现。</p>
+<h2 id="回到-Claude-Code：一条-MCP-调用在它内部怎么跑"><a href="#回到-Claude-Code：一条-MCP-调用在它内部怎么跑" class="headerlink" title="回到 Claude Code：一条 MCP 调用在它内部怎么跑"></a>回到 Claude Code：一条 MCP 调用在它内部怎么跑</h2><p>Claude Code 是理解 MCP 的好例子，因为它把宿主责任做得很完整。</p>
+<p>先看一个最基础的项目级配置：</p>
+<figure class="highlight json"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="punctuation">&#123;</span></span><br><span class="line">  <span class="attr">&quot;mcpServers&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span></span><br><span class="line">    <span class="attr">&quot;claude-code-docs&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span></span><br><span class="line">      <span class="attr">&quot;type&quot;</span><span class="punctuation">:</span> <span class="string">&quot;http&quot;</span><span class="punctuation">,</span></span><br><span class="line">      <span class="attr">&quot;url&quot;</span><span class="punctuation">:</span> <span class="string">&quot;https://code.claude.com/docs/mcp&quot;</span></span><br><span class="line">    <span class="punctuation">&#125;</span></span><br><span class="line">  <span class="punctuation">&#125;</span></span><br><span class="line"><span class="punctuation">&#125;</span></span><br></pre></td></tr></table></figure>
+
+<p>这只是入口。真正跑起来时，大致会经过下面七步。</p>
+<h3 id="第一步：决定这条连接属于哪个-scope"><a href="#第一步：决定这条连接属于哪个-scope" class="headerlink" title="第一步：决定这条连接属于哪个 scope"></a>第一步：决定这条连接属于哪个 scope</h3><p>Claude Code 把 MCP server 分成 <code>local</code>、<code>project</code>、<code>user</code> 三层。</p>
+<ul>
+<li><code>project</code> 级通常写进仓库根目录的 <code>.mcp.json</code>，适合团队共享。</li>
+<li><code>user</code> 级存在用户配置里，跨项目可见。</li>
+<li><code>local</code> 级只对当前项目、当前用户生效。</li>
+</ul>
+<p>这一步解决的不是存储位置，而是治理范围。谁能看到它，谁要审批它，出了问题谁来承担边界，都是这里定的。</p>
+<h3 id="第二步：宿主建立传输，拉起本地进程或连接远程服务"><a href="#第二步：宿主建立传输，拉起本地进程或连接远程服务" class="headerlink" title="第二步：宿主建立传输，拉起本地进程或连接远程服务"></a>第二步：宿主建立传输，拉起本地进程或连接远程服务</h3><p>如果是 <code>stdio</code> server，Claude Code 会像启动一个工具进程一样把它拉起来；如果是 HTTP server，就要处理 URL、headers、认证和连接超时。</p>
+<p>这一步也是为什么 MCP 不是单纯的“工具声明文件”。真正需要操心连接健康和安全细节的是宿主，不是模型。</p>
+<h3 id="第三步：先做初始化协商，再谈后续能力"><a href="#第三步：先做初始化协商，再谈后续能力" class="headerlink" title="第三步：先做初始化协商，再谈后续能力"></a>第三步：先做初始化协商，再谈后续能力</h3><p>Claude Code 会先和 server 确认协议版本和能力声明。只有在这一步双方达成一致后，后续的 <code>tools/list</code>、<code>resources/read</code>、<code>prompts/list</code> 才有意义。</p>
+<p>如果服务端不支持当前版本，它应该明确报错，而不是静默失败。这个设计看起来保守，实际上让宿主的行为更可调试。</p>
+<h3 id="第四步：按原语发现能力，而不是一股脑塞进上下文"><a href="#第四步：按原语发现能力，而不是一股脑塞进上下文" class="headerlink" title="第四步：按原语发现能力，而不是一股脑塞进上下文"></a>第四步：按原语发现能力，而不是一股脑塞进上下文</h3><p>协商完成后，Claude Code 会去发现服务端暴露的工具、资源、prompt。</p>
+<p>这里最有意思的地方在于：它并不需要把所有能力都立刻完整放进当前会话。Claude Code 官方 SDK 文档明确提到，MCP tools 多起来后，工具定义本身会吃掉上下文窗口，因此默认启用了 <code>tool search</code>，把工具定义延后到真正需要时再加载。</p>
+<p>这说明宿主在做的不只是“工具注册”，而是上下文预算管理。</p>
+<h3 id="第五步：把三类原语映射成三种不同的交互表面"><a href="#第五步：把三类原语映射成三种不同的交互表面" class="headerlink" title="第五步：把三类原语映射成三种不同的交互表面"></a>第五步：把三类原语映射成三种不同的交互表面</h3><p>在 Claude Code 里，MCP 原语最后会变成三种不同用法：</p>
+<ul>
+<li><code>Tools</code> 进入模型可调用动作集合。</li>
+<li><code>Resources</code> 通过 <code>@</code> 引用进入上下文。</li>
+<li><code>Prompts</code> 以斜杠命令暴露出来。</li>
+</ul>
+<p>例如，MCP prompt 会显示成：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">/mcp__github__list_prs</span><br></pre></td></tr></table></figure>
+
+<p>这一步很像编程语言里的绑定阶段：协议层的对象，被映射成了 Claude Code 自己的交互界面。</p>
+<h3 id="第六步：真正执行前，先过权限和认证"><a href="#第六步：真正执行前，先过权限和认证" class="headerlink" title="第六步：真正执行前，先过权限和认证"></a>第六步：真正执行前，先过权限和认证</h3><p>Claude Code 的安全模型不是附加功能，而是宿主层的一部分。</p>
+<p>官方安全文档强调，它默认采用严格权限模式；编辑文件、执行命令、使用某些外部能力前，宿主会要求明确许可。项目级 <code>.mcp.json</code> 里的 server 也需要审批。换句话说，MCP 给了能力入口，但不是能力白名单。</p>
+<p>这也是为什么我一直说，MCP 的重点不只是“能接”，而是“谁来收边界”。在 Claude Code 里，边界是宿主来收，不是交给模型自己判断。</p>
+<h3 id="第七步：结果回流到会话，再决定下一步"><a href="#第七步：结果回流到会话，再决定下一步" class="headerlink" title="第七步：结果回流到会话，再决定下一步"></a>第七步：结果回流到会话，再决定下一步</h3><p><code>tools/call</code> 返回的不是一个随便拼的字符串，而是结构化内容数组。Claude Code 拿到结果后，会决定下一步是继续调工具、补拿资源、请求用户输入，还是直接回答。</p>
+<p>到这里，MCP 才真正完成闭环：连接、协商、发现、执行、回流。</p>
+<p><img src="https://raw.githubusercontent.com/YeeFayAI/Image/main/2026-05/mcp-claude-code-flow.png" alt="图注：在 Claude Code 里，MCP 的重点不是“多一个工具”，而是宿主先建边界，再发现能力，最后才让模型动手"></p>
+<h2 id="一个最容易被问到的问题：为什么-OpenClaw-有时更愿意走-CLI，而不是把一切都塞进-MCP"><a href="#一个最容易被问到的问题：为什么-OpenClaw-有时更愿意走-CLI，而不是把一切都塞进-MCP" class="headerlink" title="一个最容易被问到的问题：为什么 OpenClaw 有时更愿意走 CLI，而不是把一切都塞进 MCP"></a>一个最容易被问到的问题：为什么 OpenClaw 有时更愿意走 CLI，而不是把一切都塞进 MCP</h2><p>这是个特别好的问题，因为它能逼我们区分两件经常被混在一起的事：</p>
+<ul>
+<li>“把外部能力暴露给宿主使用”</li>
+<li>“把一个现成的 Agent runtime 接进来，让它自己跑长会话”</li>
+</ul>
+<p>OpenClaw 的官方文档其实把这两件事分得很清楚。</p>
+<h3 id="OpenClaw-并没有放弃-MCP，它只是没有把-MCP-用到不该用的地方"><a href="#OpenClaw-并没有放弃-MCP，它只是没有把-MCP-用到不该用的地方" class="headerlink" title="OpenClaw 并没有放弃 MCP，它只是没有把 MCP 用到不该用的地方"></a>OpenClaw 并没有放弃 MCP，它只是没有把 MCP 用到不该用的地方</h3><p>OpenClaw 的 <code>VISION.md</code> 明确写了两点：</p>
+<ul>
+<li>它支持 MCP，既可以把自己暴露成 MCP server，也可以把 MCP 当作运行时集成面。</li>
+<li>它追求的是“务实的 MCP 支持”，不去重复已有的 agent、tool、ACPX、plugin 路径。</li>
+</ul>
+<p>这句话很重要。它说明 OpenClaw 的态度不是“不要 MCP”，而是“别让 MCP 去承担别的层次早就更适合承担的工作”。</p>
+<p>官方 <code>openclaw mcp</code> 文档也说得很直接：<br><code>openclaw mcp serve</code> 适合让 Codex、Claude Code 这类 MCP client 去访问 OpenClaw 侧的会话、消息历史、审批工具；但如果是 OpenClaw 自己来托管一个 coding harness session，就该用 <code>openclaw acp</code>。</p>
+<p>也就是说，在 OpenClaw 眼里：</p>
+<ul>
+<li><code>MCP</code> 更适合暴露能力面。</li>
+<li><code>ACP/CLI runtime</code> 更适合托管一个正在运行的代理会话。</li>
+</ul>
+<h3 id="原因一：完整的编码代理，不只是“几个工具”"><a href="#原因一：完整的编码代理，不只是“几个工具”" class="headerlink" title="原因一：完整的编码代理，不只是“几个工具”"></a>原因一：完整的编码代理，不只是“几个工具”</h3><p>把一个现成的编码代理，比如 Claude Code、Codex、Gemini CLI，完整接进系统时，你接的不是一个 <code>tool set</code>，而是一整套运行时行为：</p>
+<ul>
+<li>会话创建和恢复</li>
+<li>长流式输出</li>
+<li>中断和取消</li>
+<li>原生权限模型</li>
+<li>自己的 slash commands</li>
+<li>自己的模型选择和认证逻辑</li>
+</ul>
+<p>这类东西如果硬压成 MCP tools，会有明显语义损耗。因为 MCP 很擅长描述“宿主向外部能力发请求”，不那么适合无损承载“另一个完整代理 runtime 的全部会话语义”。</p>
+<p>OpenClaw 的 ACP 文档本身就侧面说明了这个问题。它在兼容矩阵里列得很清楚：<code>initialize</code>、<code>newSession</code>、<code>prompt</code>、<code>cancel</code> 这些是桥接重点；而更深的会话模式、历史重建、终端方法、per-session MCP servers 等能力，要么是 partial，要么是 unsupported。</p>
+<p>这恰好说明，托管一个编码 runtime，本质上是在托管会话，不是在暴露几个离散工具。</p>
+<h3 id="原因二：CLI-能直接复用现成产品的认证和订阅路径"><a href="#原因二：CLI-能直接复用现成产品的认证和订阅路径" class="headerlink" title="原因二：CLI 能直接复用现成产品的认证和订阅路径"></a>原因二：CLI 能直接复用现成产品的认证和订阅路径</h3><p>OpenClaw 的 model providers 文档给了一个很现实的信号：当你想要本地 CLI backend 时，可以把运行时策略设成 <code>claude-cli</code>、<code>google-gemini-cli</code> 这类本地 CLI runtime。</p>
+<p>同一份文档里还有一句更关键的话：OpenClaw 现在偏向复用 Claude CLI 和 <code>claude -p</code>，在可用时优先走这条路。</p>
+<p>这背后不是协议优雅性，而是产品现实：</p>
+<ul>
+<li>CLI 已经有官方登录流。</li>
+<li>CLI 已经绑定了厂商认可的认证方式。</li>
+<li>CLI 已经把一些模型选择、权限和工具行为打包好了。</li>
+</ul>
+<p>如果宿主能直接复用这条成熟链路，就没有必要重新把同一套东西再包成一层 MCP wrapper。</p>
+<h3 id="原因三：CLI-runtime-保留了原生行为，集成成本更低"><a href="#原因三：CLI-runtime-保留了原生行为，集成成本更低" class="headerlink" title="原因三：CLI runtime 保留了原生行为，集成成本更低"></a>原因三：CLI runtime 保留了原生行为，集成成本更低</h3><p>当你复用现成 CLI 时，很多行为是“原封不动借过来”的：</p>
+<ul>
+<li>它原生怎么流式输出，集成层就怎么接。</li>
+<li>它原生怎么登录，集成层就怎么复用。</li>
+<li>它原生怎么约束工具，集成层通常不必重新建一遍语义。</li>
+</ul>
+<p>这比把一个完整 agent 再拆成 MCP server，再让宿主重新理解一遍，往往更省。</p>
+<p>换句话说，CLI runtime 胜出的地方，不是比 MCP 更“先进”，而是它在接入一个现成产品时，语义损耗更少。</p>
+<h3 id="原因四：MCP-适合能力互操作，CLI-适合产品复用"><a href="#原因四：MCP-适合能力互操作，CLI-适合产品复用" class="headerlink" title="原因四：MCP 适合能力互操作，CLI 适合产品复用"></a>原因四：MCP 适合能力互操作，CLI 适合产品复用</h3><p>这是最核心的分界线。</p>
+<p>如果你想做的是：</p>
+<ul>
+<li>让 Claude Code 访问外部文档</li>
+<li>让 OpenClaw 暴露消息会话给别的宿主</li>
+<li>让一个 Agent 统一接 GitHub、数据库、搜索、监控这些能力</li>
+</ul>
+<p>那 MCP 很合适，因为你需要的是统一能力面。</p>
+<p>如果你想做的是：</p>
+<ul>
+<li>把 Claude Code 整个作为一个现成 runtime 托管进来</li>
+<li>复用 Codex 或 Gemini CLI 的原生能力</li>
+<li>保留供应商产品已经做好的认证和会话行为</li>
+</ul>
+<p>那 CLI 或 ACP 往往更顺手，因为你需要的是完整 runtime，不是能力目录。</p>
+<h2 id="那-CLI-会不会把-MCP-取代掉"><a href="#那-CLI-会不会把-MCP-取代掉" class="headerlink" title="那 CLI 会不会把 MCP 取代掉"></a>那 CLI 会不会把 MCP 取代掉</h2><p>我的判断是：不会。但它会吃掉一部分原本不该硬做成 MCP 的集成。</p>
+<p>原因很简单，二者解决的问题层次不同。</p>
+<h3 id="CLI-擅长借用一个现成产品"><a href="#CLI-擅长借用一个现成产品" class="headerlink" title="CLI 擅长借用一个现成产品"></a>CLI 擅长借用一个现成产品</h3><p>CLI 是产品表面。它的优点是：</p>
+<ul>
+<li>直接复用现成认证和订阅</li>
+<li>尽量保留原生运行时语义</li>
+<li>对特定产品的深度接入成本低</li>
+</ul>
+<p>所以在“把 Claude Code &#x2F; Codex &#x2F; Gemini 这类东西直接接进另一个系统”这条线上，CLI 或 ACP 这种路径确实很强。</p>
+<h3 id="MCP-擅长做跨产品的公共接口"><a href="#MCP-擅长做跨产品的公共接口" class="headerlink" title="MCP 擅长做跨产品的公共接口"></a>MCP 擅长做跨产品的公共接口</h3><p>MCP 是协议表面。它的优点是：</p>
+<ul>
+<li>有统一的能力发现</li>
+<li>有统一的 <code>tools / resources / prompts</code> 分层</li>
+<li>有统一的传输和能力协商模型</li>
+<li>宿主可以把不同来源的能力收到一个公共控制面里</li>
+</ul>
+<p>CLI 做不到这一点。CLI 天然是产品私有接口，不会自动变成通用互操作层。</p>
+<h3 id="最能说明问题的一点是：Claude-Code-自己也能当-MCP-server"><a href="#最能说明问题的一点是：Claude-Code-自己也能当-MCP-server" class="headerlink" title="最能说明问题的一点是：Claude Code 自己也能当 MCP server"></a>最能说明问题的一点是：Claude Code 自己也能当 MCP server</h3><p>Claude Code 官方文档明确支持：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">claude mcp serve</span><br></pre></td></tr></table></figure>
+
+<p>也就是说，CLI 产品本身并没有把 MCP 干掉，反而愿意把自己再暴露成一个 MCP surface，供别的宿主接入。</p>
+<p>这恰好说明两者不是替代关系，而是分层关系：</p>
+<ul>
+<li>CLI 是一个具体产品的原生入口。</li>
+<li>MCP 是不同产品之间更稳定的公共接口。</li>
+</ul>
+<p>在接完整 runtime 时，CLI 可能比 MCP 更省。<br>在做跨工具生态互操作时，MCP 仍然更像基础设施。</p>
+<h2 id="真到工程里，什么时候选-MCP，什么时候直接接-CLI"><a href="#真到工程里，什么时候选-MCP，什么时候直接接-CLI" class="headerlink" title="真到工程里，什么时候选 MCP，什么时候直接接 CLI"></a>真到工程里，什么时候选 MCP，什么时候直接接 CLI</h2><p>可以用一张很实用的表来判断：</p>
+<table>
+<thead>
+<tr>
+<th>场景</th>
+<th>更适合的路径</th>
+<th>原因</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>让宿主访问外部系统的能力、文档、数据</td>
+<td>MCP</td>
+<td>统一发现、统一权限、统一上下文入口</td>
+</tr>
+<tr>
+<td>把一个现成 coding agent 当作完整 runtime 接进来</td>
+<td>CLI &#x2F; ACP</td>
+<td>要保留完整会话语义、认证和原生行为</td>
+</tr>
+<tr>
+<td>让多个不同工具在同一个宿主里共存</td>
+<td>MCP</td>
+<td>宿主能用一套控制面治理它们</td>
+</tr>
+<tr>
+<td>借用单一厂商产品已有的登录与订阅</td>
+<td>CLI</td>
+<td>少一层重打包，产品语义损耗更小</td>
+</tr>
+<tr>
+<td>需要跨产品、跨团队共享一套连接规范</td>
+<td>MCP</td>
+<td>比私有 CLI 更适合长期互操作</td>
+</tr>
+</tbody></table>
+<p>一句话说：</p>
+<p>要“借一个完整代理”，先想 CLI。<br>要“接一片可组合能力”，先想 MCP。</p>
+<h2 id="我现在怎么看-MCP"><a href="#我现在怎么看-MCP" class="headerlink" title="我现在怎么看 MCP"></a>我现在怎么看 MCP</h2><p>写到这里，我对 MCP 的判断已经很稳定了。</p>
+<p>它不是某种让 Agent 突然变聪明的咒语。它做的事情更基础，也更值钱：把外部世界整理成一套宿主可以治理的能力面。</p>
+<p>所以我现在看一个集成方案，先不问“连了多少服务”，而先问四个问题：</p>
+<ol>
+<li>它是在暴露能力，还是在托管完整 runtime。</li>
+<li>它有没有把动作、上下文、交互模板分开。</li>
+<li>宿主有没有真正收住权限、认证、输出体量和上下文预算。</li>
+<li>它选 MCP 还是 CLI，是因为问题本身适合，还是因为团队只会其中一种。</li>
+</ol>
+<p>Claude Code 适合拿来讲 MCP，不是因为它功能最多，而是因为它把宿主该负的责任做得很清楚。<br>OpenClaw 适合拿来讲边界，不是因为它反对 MCP，而是因为它很诚实地承认：有些事情该交给 MCP，有些事情更该交给 CLI 或 ACP。</p>
+<p>这恰好也是我对这个问题最后的结论。</p>
+<p>MCP 不会被 CLI 取代。<br>但凡是“完整 runtime 托管”这种问题，未来很多团队会越来越少地硬包一层 MCP，而是直接复用现成 CLI。<br>协议层和产品层会一起存在，各自吃掉自己最擅长的那部分复杂度。</p>
+<h2 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a>参考资料</h2><ul>
+<li><a target="_blank" rel="noopener" href="https://modelcontextprotocol.io/docs/learn/architecture">Model Context Protocol Architecture Overview</a></li>
+<li><a target="_blank" rel="noopener" href="https://modelcontextprotocol.io/specification/draft/basic/lifecycle">Model Context Protocol Lifecycle</a></li>
+<li><a target="_blank" rel="noopener" href="https://modelcontextprotocol.io/specification/2025-06-18/basic/transports">Model Context Protocol Transports</a></li>
+<li><a target="_blank" rel="noopener" href="https://modelcontextprotocol.io/specification/2025-06-18/server/resources">Model Context Protocol Resources</a></li>
+<li><a target="_blank" rel="noopener" href="https://modelcontextprotocol.io/specification/2025-06-18/client/sampling">Model Context Protocol Sampling</a></li>
+<li><a target="_blank" rel="noopener" href="https://code.claude.com/docs/en/mcp">Claude Code: Connect to tools via MCP</a></li>
+<li><a target="_blank" rel="noopener" href="https://code.claude.com/docs/en/agent-sdk/mcp">Claude Code: Connect to external tools with MCP</a></li>
+<li><a target="_blank" rel="noopener" href="https://code.claude.com/docs/en/security">Claude Code Security</a></li>
+<li><a target="_blank" rel="noopener" href="https://code.claude.com/docs/en/settings">Claude Code Settings</a></li>
+<li><a target="_blank" rel="noopener" href="https://github.com/openclaw/openclaw/blob/main/docs/cli/mcp.md">OpenClaw MCP</a></li>
+<li><a target="_blank" rel="noopener" href="https://github.com/openclaw/openclaw/blob/main/docs.acp.md">OpenClaw ACP Bridge</a></li>
+<li><a target="_blank" rel="noopener" href="https://github.com/openclaw/openclaw/blob/main/docs/concepts/model-providers.md">OpenClaw Model Providers</a></li>
+<li><a target="_blank" rel="noopener" href="https://github.com/openclaw/openclaw/blob/main/VISION.md">OpenClaw Vision</a></li>
+</ul>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="https://yeefayai.github.io">YeeFayAI</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://yeefayai.github.io/2026/05/16/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BAMCP/">https://yeefayai.github.io/2026/05/16/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BAMCP/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://yeefayai.github.io" target="_blank">YeeFayAI</a>！</span></div></div><div class="tag_share"><div class="post-share"><div class="social-share" data-image="/img/YeeFay.jpg" data-sites="facebook,x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related full-width" href="/2026/05/16/EchoYou-Agent/" title="EchoYou-Agent"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">EchoYou-Agent</div></div><div class="info-2"><div class="info-item-1">EchoYou Agent · 持续进化的主动式 AI 伙伴 面向本地 C 端陪伴场景的长时运行 Agent 框架。 它用三态 Agent Loop、基于 6 Phase × DAG 拓扑排序的插件化生命周期，以及 MCP &#x2F; A2A 双协议栈，做出一个会主动找你、能在后台自主干活、越聊越懂你的 AI 伙伴。支持 Telegram &#x2F; QQ &#x2F; CLI 多渠道接入。     Long-running · Proactive · Self-Evolving · Plugin-First    一、为什么做 EchoYou “如果一个 AI 真的住在我手机里，它该怎么活着？”  市面上的 Chatbot 几乎都活在“用户问一句、模型答一句”的回合制里。你不开口，它就不存在。但真正的“伙伴”不该是这样。 EchoYou 想回答的是另一个问题：当一个 AI 被允许长期住在你的设备里，被允许主动开口，也被允许在你不在时自己做事，它应该被设计成什么样子？ 这意味着要重新定义 Agent 的存在形态，而不只是做一个更聪明的 Chatbot。  二、设计哲学之一：从...</div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="/img/YeeFay.jpg" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">YeeFayAI</div><div class="author-info-description">Agent is all you need</div><a id="card-info-btn" target="_blank" rel="noopener" href="https://github.com/YeeFayAI"><i class="fab fa-github"></i><span>Follow Me</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/YeeFayAI" target="_blank" title="Github"><i class="fab fa-github" style="color: #24292e;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">Hello, I am YeeFay. Welcome to my blog!</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BA-MCP"><span class="toc-number">1.</span> <span class="toc-text">深入浅出 MCP</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%88%E5%88%AB%E6%80%A5%E7%9D%80%E6%8A%8A-MCP-%E8%AE%B2%E6%88%90%E2%80%9CAI-%E7%9A%84-USB-C%E2%80%9D"><span class="toc-number">1.1.</span> <span class="toc-text">先别急着把 MCP 讲成“AI 的 USB-C”</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%88%E6%8A%8A%E5%9C%B0%E6%9D%BF%E9%93%BA%E5%B9%B3%EF%BC%9AMCP-%E5%88%B0%E5%BA%95%E5%9C%A8%E5%AE%9A%E4%B9%89%E4%BB%80%E4%B9%88"><span class="toc-number">1.2.</span> <span class="toc-text">先把地板铺平：MCP 到底在定义什么</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%B2%A1%E6%9C%89%E5%8D%8F%E8%AE%AE%E7%9A%84%E6%97%B6%E5%80%99%EF%BC%8CAgent-%E6%8E%A5%E5%A4%96%E9%83%A8%E4%B8%96%E7%95%8C%E9%9D%A0%E7%9A%84%E6%98%AF%E6%89%8B%E6%90%93%E9%80%82%E9%85%8D"><span class="toc-number">1.2.1.</span> <span class="toc-text">没有协议的时候，Agent 接外部世界靠的是手搓适配</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%9C%A8-MCP-%E9%87%8C%EF%BC%8CClaude-Code-%E9%A6%96%E5%85%88%E6%98%AF%E5%AE%BF%E4%B8%BB%EF%BC%8C%E4%B8%8D%E5%8F%AA%E6%98%AF%E4%B8%80%E4%B8%AA%E8%81%8A%E5%A4%A9%E7%AA%97%E5%8F%A3"><span class="toc-number">1.2.2.</span> <span class="toc-text">在 MCP 里，Claude Code 首先是宿主，不只是一个聊天窗口</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%9C%9F%E6%AD%A3%E4%BA%A4%E6%8D%A2%E7%9A%84%E4%B8%9C%E8%A5%BF%E5%88%86%E4%B8%A4%E5%B1%82%EF%BC%9A%E6%95%B0%E6%8D%AE%E5%B1%82%E5%92%8C%E4%BC%A0%E8%BE%93%E5%B1%82"><span class="toc-number">1.2.3.</span> <span class="toc-text">真正交换的东西分两层：数据层和传输层</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%80%E6%9D%A1-MCP-%E8%BF%9E%E6%8E%A5%E4%B8%8D%E6%98%AF%E2%80%9C%E7%9B%B4%E6%8E%A5%E5%BC%80%E8%B0%83%E2%80%9D%EF%BC%8C%E8%80%8C%E6%98%AF%E5%85%88%E6%8F%A1%E6%89%8B"><span class="toc-number">1.2.4.</span> <span class="toc-text">一条 MCP 连接不是“直接开调”，而是先握手</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Tools%E3%80%81Resources%E3%80%81Prompts%EF%BC%8C%E5%85%B6%E5%AE%9E%E6%98%AF%E5%9C%A8%E5%88%86%E4%B8%89%E7%A7%8D%E5%AE%8C%E5%85%A8%E4%B8%8D%E5%90%8C%E7%9A%84%E9%9C%80%E6%B1%82"><span class="toc-number">1.2.5.</span> <span class="toc-text">Tools、Resources、Prompts，其实是在分三种完全不同的需求</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Sampling%E3%80%81Elicitation%E3%80%81Notifications-%E8%AE%A9%E5%AE%83%E4%B8%8D%E6%98%AF%E5%8D%95%E5%90%91%E5%B7%A5%E5%85%B7%E7%AE%B1"><span class="toc-number">1.2.6.</span> <span class="toc-text">Sampling、Elicitation、Notifications 让它不是单向工具箱</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%8A%8A%E6%9C%AF%E8%AF%AD%E6%8B%BF%E6%8E%89%EF%BC%8CMCP-%E7%9A%84%E5%9F%BA%E6%9C%AC%E5%8E%9F%E7%90%86%E5%85%B6%E5%AE%9E%E5%BE%88%E6%9C%B4%E7%B4%A0"><span class="toc-number">1.3.</span> <span class="toc-text">把术语拿掉，MCP 的基本原理其实很朴素</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9E%E5%88%B0-Claude-Code%EF%BC%9A%E4%B8%80%E6%9D%A1-MCP-%E8%B0%83%E7%94%A8%E5%9C%A8%E5%AE%83%E5%86%85%E9%83%A8%E6%80%8E%E4%B9%88%E8%B7%91"><span class="toc-number">1.4.</span> <span class="toc-text">回到 Claude Code：一条 MCP 调用在它内部怎么跑</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%AC%AC%E4%B8%80%E6%AD%A5%EF%BC%9A%E5%86%B3%E5%AE%9A%E8%BF%99%E6%9D%A1%E8%BF%9E%E6%8E%A5%E5%B1%9E%E4%BA%8E%E5%93%AA%E4%B8%AA-scope"><span class="toc-number">1.4.1.</span> <span class="toc-text">第一步：决定这条连接属于哪个 scope</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%AC%AC%E4%BA%8C%E6%AD%A5%EF%BC%9A%E5%AE%BF%E4%B8%BB%E5%BB%BA%E7%AB%8B%E4%BC%A0%E8%BE%93%EF%BC%8C%E6%8B%89%E8%B5%B7%E6%9C%AC%E5%9C%B0%E8%BF%9B%E7%A8%8B%E6%88%96%E8%BF%9E%E6%8E%A5%E8%BF%9C%E7%A8%8B%E6%9C%8D%E5%8A%A1"><span class="toc-number">1.4.2.</span> <span class="toc-text">第二步：宿主建立传输，拉起本地进程或连接远程服务</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%AC%AC%E4%B8%89%E6%AD%A5%EF%BC%9A%E5%85%88%E5%81%9A%E5%88%9D%E5%A7%8B%E5%8C%96%E5%8D%8F%E5%95%86%EF%BC%8C%E5%86%8D%E8%B0%88%E5%90%8E%E7%BB%AD%E8%83%BD%E5%8A%9B"><span class="toc-number">1.4.3.</span> <span class="toc-text">第三步：先做初始化协商，再谈后续能力</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%AC%AC%E5%9B%9B%E6%AD%A5%EF%BC%9A%E6%8C%89%E5%8E%9F%E8%AF%AD%E5%8F%91%E7%8E%B0%E8%83%BD%E5%8A%9B%EF%BC%8C%E8%80%8C%E4%B8%8D%E6%98%AF%E4%B8%80%E8%82%A1%E8%84%91%E5%A1%9E%E8%BF%9B%E4%B8%8A%E4%B8%8B%E6%96%87"><span class="toc-number">1.4.4.</span> <span class="toc-text">第四步：按原语发现能力，而不是一股脑塞进上下文</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%AC%AC%E4%BA%94%E6%AD%A5%EF%BC%9A%E6%8A%8A%E4%B8%89%E7%B1%BB%E5%8E%9F%E8%AF%AD%E6%98%A0%E5%B0%84%E6%88%90%E4%B8%89%E7%A7%8D%E4%B8%8D%E5%90%8C%E7%9A%84%E4%BA%A4%E4%BA%92%E8%A1%A8%E9%9D%A2"><span class="toc-number">1.4.5.</span> <span class="toc-text">第五步：把三类原语映射成三种不同的交互表面</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%AC%AC%E5%85%AD%E6%AD%A5%EF%BC%9A%E7%9C%9F%E6%AD%A3%E6%89%A7%E8%A1%8C%E5%89%8D%EF%BC%8C%E5%85%88%E8%BF%87%E6%9D%83%E9%99%90%E5%92%8C%E8%AE%A4%E8%AF%81"><span class="toc-number">1.4.6.</span> <span class="toc-text">第六步：真正执行前，先过权限和认证</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%AC%AC%E4%B8%83%E6%AD%A5%EF%BC%9A%E7%BB%93%E6%9E%9C%E5%9B%9E%E6%B5%81%E5%88%B0%E4%BC%9A%E8%AF%9D%EF%BC%8C%E5%86%8D%E5%86%B3%E5%AE%9A%E4%B8%8B%E4%B8%80%E6%AD%A5"><span class="toc-number">1.4.7.</span> <span class="toc-text">第七步：结果回流到会话，再决定下一步</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E4%B8%AA%E6%9C%80%E5%AE%B9%E6%98%93%E8%A2%AB%E9%97%AE%E5%88%B0%E7%9A%84%E9%97%AE%E9%A2%98%EF%BC%9A%E4%B8%BA%E4%BB%80%E4%B9%88-OpenClaw-%E6%9C%89%E6%97%B6%E6%9B%B4%E6%84%BF%E6%84%8F%E8%B5%B0-CLI%EF%BC%8C%E8%80%8C%E4%B8%8D%E6%98%AF%E6%8A%8A%E4%B8%80%E5%88%87%E9%83%BD%E5%A1%9E%E8%BF%9B-MCP"><span class="toc-number">1.5.</span> <span class="toc-text">一个最容易被问到的问题：为什么 OpenClaw 有时更愿意走 CLI，而不是把一切都塞进 MCP</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#OpenClaw-%E5%B9%B6%E6%B2%A1%E6%9C%89%E6%94%BE%E5%BC%83-MCP%EF%BC%8C%E5%AE%83%E5%8F%AA%E6%98%AF%E6%B2%A1%E6%9C%89%E6%8A%8A-MCP-%E7%94%A8%E5%88%B0%E4%B8%8D%E8%AF%A5%E7%94%A8%E7%9A%84%E5%9C%B0%E6%96%B9"><span class="toc-number">1.5.1.</span> <span class="toc-text">OpenClaw 并没有放弃 MCP，它只是没有把 MCP 用到不该用的地方</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8E%9F%E5%9B%A0%E4%B8%80%EF%BC%9A%E5%AE%8C%E6%95%B4%E7%9A%84%E7%BC%96%E7%A0%81%E4%BB%A3%E7%90%86%EF%BC%8C%E4%B8%8D%E5%8F%AA%E6%98%AF%E2%80%9C%E5%87%A0%E4%B8%AA%E5%B7%A5%E5%85%B7%E2%80%9D"><span class="toc-number">1.5.2.</span> <span class="toc-text">原因一：完整的编码代理，不只是“几个工具”</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8E%9F%E5%9B%A0%E4%BA%8C%EF%BC%9ACLI-%E8%83%BD%E7%9B%B4%E6%8E%A5%E5%A4%8D%E7%94%A8%E7%8E%B0%E6%88%90%E4%BA%A7%E5%93%81%E7%9A%84%E8%AE%A4%E8%AF%81%E5%92%8C%E8%AE%A2%E9%98%85%E8%B7%AF%E5%BE%84"><span class="toc-number">1.5.3.</span> <span class="toc-text">原因二：CLI 能直接复用现成产品的认证和订阅路径</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8E%9F%E5%9B%A0%E4%B8%89%EF%BC%9ACLI-runtime-%E4%BF%9D%E7%95%99%E4%BA%86%E5%8E%9F%E7%94%9F%E8%A1%8C%E4%B8%BA%EF%BC%8C%E9%9B%86%E6%88%90%E6%88%90%E6%9C%AC%E6%9B%B4%E4%BD%8E"><span class="toc-number">1.5.4.</span> <span class="toc-text">原因三：CLI runtime 保留了原生行为，集成成本更低</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8E%9F%E5%9B%A0%E5%9B%9B%EF%BC%9AMCP-%E9%80%82%E5%90%88%E8%83%BD%E5%8A%9B%E4%BA%92%E6%93%8D%E4%BD%9C%EF%BC%8CCLI-%E9%80%82%E5%90%88%E4%BA%A7%E5%93%81%E5%A4%8D%E7%94%A8"><span class="toc-number">1.5.5.</span> <span class="toc-text">原因四：MCP 适合能力互操作，CLI 适合产品复用</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E9%82%A3-CLI-%E4%BC%9A%E4%B8%8D%E4%BC%9A%E6%8A%8A-MCP-%E5%8F%96%E4%BB%A3%E6%8E%89"><span class="toc-number">1.6.</span> <span class="toc-text">那 CLI 会不会把 MCP 取代掉</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#CLI-%E6%93%85%E9%95%BF%E5%80%9F%E7%94%A8%E4%B8%80%E4%B8%AA%E7%8E%B0%E6%88%90%E4%BA%A7%E5%93%81"><span class="toc-number">1.6.1.</span> <span class="toc-text">CLI 擅长借用一个现成产品</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#MCP-%E6%93%85%E9%95%BF%E5%81%9A%E8%B7%A8%E4%BA%A7%E5%93%81%E7%9A%84%E5%85%AC%E5%85%B1%E6%8E%A5%E5%8F%A3"><span class="toc-number">1.6.2.</span> <span class="toc-text">MCP 擅长做跨产品的公共接口</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%9C%80%E8%83%BD%E8%AF%B4%E6%98%8E%E9%97%AE%E9%A2%98%E7%9A%84%E4%B8%80%E7%82%B9%E6%98%AF%EF%BC%9AClaude-Code-%E8%87%AA%E5%B7%B1%E4%B9%9F%E8%83%BD%E5%BD%93-MCP-server"><span class="toc-number">1.6.3.</span> <span class="toc-text">最能说明问题的一点是：Claude Code 自己也能当 MCP server</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%9C%9F%E5%88%B0%E5%B7%A5%E7%A8%8B%E9%87%8C%EF%BC%8C%E4%BB%80%E4%B9%88%E6%97%B6%E5%80%99%E9%80%89-MCP%EF%BC%8C%E4%BB%80%E4%B9%88%E6%97%B6%E5%80%99%E7%9B%B4%E6%8E%A5%E6%8E%A5-CLI"><span class="toc-number">1.7.</span> <span class="toc-text">真到工程里，什么时候选 MCP，什么时候直接接 CLI</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%88%91%E7%8E%B0%E5%9C%A8%E6%80%8E%E4%B9%88%E7%9C%8B-MCP"><span class="toc-number">1.8.</span> <span class="toc-text">我现在怎么看 MCP</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%8F%82%E8%80%83%E8%B5%84%E6%96%99"><span class="toc-number">1.9.</span> <span class="toc-text">参考资料</span></a></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/05/16/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BAMCP/" title="深入浅出MCP">深入浅出MCP</a><time datetime="2026-05-15T21:12:00.000Z" title="发表于 2026-05-16 05:12:00">2026-05-16</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/05/16/EchoYou-Agent/" title="EchoYou-Agent">EchoYou-Agent</a><time datetime="2026-05-15T20:37:10.000Z" title="发表于 2026-05-16 04:37:10">2026-05-16</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/05/15/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BAAgent%E6%84%8F%E5%9B%BE%E8%AF%86%E5%88%AB%E5%B7%A5%E5%85%B7%E8%B0%83%E7%94%A8%E5%86%B3%E7%AD%96%E6%9C%BA%E5%88%B6/" title="深入浅出Agent意图识别工具调用决策机制">深入浅出Agent意图识别工具调用决策机制</a><time datetime="2026-05-15T10:32:20.000Z" title="发表于 2026-05-15 18:32:20">2026-05-15</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/05/15/%E9%A1%B9%E7%9B%AE%E7%BA%A7Harness%E5%A6%82%E4%BD%95%E6%8A%8A%E7%9C%9F%E5%AE%9E%E4%BB%93%E5%BA%93%E5%8F%98%E6%88%90Agent%E7%8E%AF%E5%A2%83/" title="项目级Harness如何把真实仓库变成Agent环境">项目级Harness如何把真实仓库变成Agent环境</a><time datetime="2026-05-15T01:00:00.000Z" title="发表于 2026-05-15 09:00:00">2026-05-15</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/05/13/Agent%E8%AF%84%E6%B5%8B%E5%9F%BA%E7%BA%BF%E4%B8%8E%E5%9B%9E%E5%BD%92%E9%97%A8%E7%A6%81/" title="Agent评测基线与回归门禁">Agent评测基线与回归门禁</a><time datetime="2026-05-13T01:00:00.000Z" title="发表于 2026-05-13 09:00:00">2026-05-13</time></div></div></div></div></div></div></main><footer id="footer" style="background-image: url(/img/footer-bg.jpg);"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;YeeFayAI</span></div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.4"></script><script src="/js/main.js?v=5.5.4"></script><div class="js-pjax"></div><script>
+if (window.location.pathname === '/about/') {
+  const header = document.querySelector('#page-header');
+  if (header) {
+    const videoHtml = `
+      <div class="about-video-header">
+        <video autoplay muted loop playsinline>
+          <source src="/img/about-bg.mp4" type="video/mp4">
+        </video>
+        <div class="video-title">关于我</div>
+      </div>
+    `;
+    header.insertAdjacentHTML('afterend', videoHtml);
+  }
+}
+</script>
+<script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script><div id="local-search"><div class="search-dialog"><nav class="search-nav"><span class="search-dialog-title">搜索</span><i class="fas fa-spinner fa-pulse" id="loading-status" hidden="hidden"></i><button class="search-close-button"><i class="fas fa-times"></i></button></nav><div class="text-center" id="loading-database"><i class="fas fa-spinner fa-pulse"></i><span>  数据加载中</span></div><div class="local-search-input"><input placeholder="Search articles..." type="text"/></div><hr/><div id="local-search-results"></div><div class="ais-Pagination" id="local-search-pagination" style="display:none;"><ul class="ais-Pagination-list"></ul></div><div id="local-search-stats"></div></div><div id="search-mask"></div><script src="/js/search/local-search.js?v=5.5.4"></script></div></div></body></html>
